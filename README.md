@@ -41,6 +41,43 @@
 
 ## 服务 API 文档
 
+### 食材管理 CRUD
+
+> 说明：该接口为全局食材库（不按用户隔离），删除采用软删除（`isDeleted=1`）。
+
+#### `POST /api/ingredients`
+
+创建食材。
+
+请求体示例：
+
+```json
+{
+  "name": "低脂鸡肉肠",
+  "category": "protein",
+  "kcal": 170,
+  "carbs": 6.5,
+  "protein": 15,
+  "fat": 6,
+  "unit": "g"
+}
+```
+
+> `category` 可选值：`combo`、`carbs`、`protein`、`fiber`、`fat`  
+> `unit` 可选值：`g`、`ml`、`个`、`份`
+
+#### `GET /api/ingredients`
+
+查询未删除的食材列表，按 `updatedAt desc` 排序。
+
+#### `PUT /api/ingredients/{id}`
+
+更新指定食材，参数与创建接口一致。
+
+#### `DELETE /api/ingredients/{id}`
+
+软删除指定食材（更新 `isDeleted` 为 `1`）。
+
 ### `GET /api/count`
 
 获取当前计数
@@ -115,6 +152,14 @@ curl -X POST -H 'content-type: application/json' -d '{"action": "inc"}' https://
 - MYSQL_PASSWORD
 - MYSQL_USERNAME
 以上三个变量的值请按实际情况填写。如果使用云托管内MySQL，可以在控制台MySQL页面获取相关信息。
+
+## 关联前端仓库与联调
+
+- 前端仓库路径：`/Users/wuyingming/code/wechat/eatwhat`
+- 小程序通过 `wx.request` 访问本服务 `/api/ingredients` 完成“我的食材”CRUD。
+- 前端需要设置后端域名（建议存储键：`EATWHAT_API_BASE_URL`），例如：
+  - `https://<你的云托管服务域名>`
+  - 本地联调可使用可访问的内网穿透域名
 
 
 ## License
