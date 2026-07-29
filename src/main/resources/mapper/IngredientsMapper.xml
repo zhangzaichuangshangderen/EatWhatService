@@ -11,27 +11,30 @@
         <result property="protein" column="protein" javaType="java.lang.Double"/>
         <result property="fat" column="fat" javaType="java.lang.Double"/>
         <result property="unit" column="unit"/>
+        <result property="userId" column="userId"/>
         <result property="isDeleted" column="isDeleted"/>
         <result property="createdAt" column="createdAt" javaType="java.time.LocalDateTime"/>
         <result property="updatedAt" column="updatedAt" javaType="java.time.LocalDateTime"/>
     </resultMap>
 
     <insert id="createIngredient" parameterType="com.tencent.wxcloudrun.model.Ingredient" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO `Ingredients`(`name`, `category`, `kcal`, `carbs`, `protein`, `fat`, `unit`, `isDeleted`)
-        VALUES (#{name}, #{category}, #{kcal}, #{carbs}, #{protein}, #{fat}, #{unit}, 0)
+        INSERT INTO `Ingredients`(`name`, `category`, `kcal`, `carbs`, `protein`, `fat`, `unit`, `userId`, `isDeleted`)
+        VALUES (#{name}, #{category}, #{kcal}, #{carbs}, #{protein}, #{fat}, #{unit}, #{userId}, 0)
     </insert>
 
     <select id="listIngredients" resultMap="ingredientsMapper">
-        SELECT `id`, `name`, `category`, `kcal`, `carbs`, `protein`, `fat`, `unit`, `isDeleted`, `createdAt`, `updatedAt`
+        SELECT `id`, `name`, `category`, `kcal`, `carbs`, `protein`, `fat`, `unit`, `userId`, `isDeleted`, `createdAt`, `updatedAt`
         FROM `Ingredients`
-        WHERE `isDeleted` = 0
+        WHERE `userId` = #{userId}
+          AND `isDeleted` = 0
         ORDER BY `updatedAt` DESC, `id` DESC
     </select>
 
-    <select id="getIngredientById" resultMap="ingredientsMapper" parameterType="java.lang.Integer">
-        SELECT `id`, `name`, `category`, `kcal`, `carbs`, `protein`, `fat`, `unit`, `isDeleted`, `createdAt`, `updatedAt`
+    <select id="getIngredientById" resultMap="ingredientsMapper">
+        SELECT `id`, `name`, `category`, `kcal`, `carbs`, `protein`, `fat`, `unit`, `userId`, `isDeleted`, `createdAt`, `updatedAt`
         FROM `Ingredients`
         WHERE `id` = #{id}
+          AND `userId` = #{userId}
           AND `isDeleted` = 0
         LIMIT 1
     </select>
@@ -47,14 +50,16 @@
             `unit` = #{unit},
             `updatedAt` = CURRENT_TIMESTAMP
         WHERE `id` = #{id}
+          AND `userId` = #{userId}
           AND `isDeleted` = 0
     </update>
 
-    <update id="softDeleteIngredient" parameterType="java.lang.Integer">
+    <update id="softDeleteIngredient">
         UPDATE `Ingredients`
         SET `isDeleted` = 1,
             `updatedAt` = CURRENT_TIMESTAMP
         WHERE `id` = #{id}
+          AND `userId` = #{userId}
           AND `isDeleted` = 0
     </update>
 

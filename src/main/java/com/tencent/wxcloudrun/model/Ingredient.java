@@ -24,6 +24,8 @@ public class Ingredient implements Serializable {
 
   private String unit;
 
+  private String userId;
+
   private Integer isDeleted;
 
   private LocalDateTime createdAt;

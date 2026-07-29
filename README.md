@@ -43,7 +43,9 @@
 
 ### 食材管理 CRUD
 
-> 说明：该接口为全局食材库（不按用户隔离），删除采用软删除（`isDeleted=1`）。
+> 说明：该接口为**按用户隔离**的「我的食材」库，用户身份来自微信云托管注入的 `X-WX-OPENID` 请求头（小程序需使用 `wx.cloud.callContainer` 调用）。删除采用软删除（`isDeleted=1`）。
+
+> 鉴权：无 openid 时返回 `{"code":0,"errorMsg":"未登录，请从小程序访问"}`。
 
 #### `POST /api/ingredients`
 
@@ -68,7 +70,7 @@
 
 #### `GET /api/ingredients`
 
-查询未删除的食材列表，按 `updatedAt desc` 排序。
+查询当前用户未删除的食材列表，按 `updatedAt desc` 排序。
 
 #### `PUT /api/ingredients/{id}`
 
@@ -154,13 +156,20 @@ curl -X POST -H 'content-type: application/json' -d '{"action": "inc"}' https://
 - MYSQL_DATABASE（可选，默认 `eatwhat`）
 以上变量的值请按实际情况填写。如果使用云托管内 MySQL，可以在控制台 MySQL 页面获取相关信息。
 
+## 数据库升级（已有环境）
+
+若 `Ingredients` 表已存在但缺少 `userId` 字段，请在 MySQL 控制台执行：
+
+`src/main/resources/db_migration_add_userId.sql`
+
 ## 关联前端仓库与联调
 
-- 前端仓库路径：`/Users/wuyingming/code/wechat/eatwhat`
-- 小程序通过 `wx.request` 访问本服务 `/api/ingredients` 完成“我的食材”CRUD。
-- 前端需要设置后端域名（建议存储键：`EATWHAT_API_BASE_URL`），例如：
-  - `https://<你的云托管服务域名>`
-  - 本地联调可使用可访问的内网穿透域名
+- 前端仓库路径：`/Users/lemon.wu/Code/wechat/eatwhat`
+- 小程序通过 `wx.cloud.callContainer` 访问本服务 `/api/ingredients`，微信会自动注入用户 openid。
+- 前端需在 `app.ts` 配置云环境与服务名（存储键）：
+  - `EATWHAT_CLOUD_ENV`：云环境 ID（云托管控制台获取）
+  - `EATWHAT_CLOUD_SERVICE`：云托管服务名（如 `springboot-kq61`）
+- 参考文档：[云托管小程序登录流程优化](https://developers.weixin.qq.com/miniprogram/dev/wxcloudservice/wxcloudrun/src/quickstart/plan/login.html)
 
 
 ## License

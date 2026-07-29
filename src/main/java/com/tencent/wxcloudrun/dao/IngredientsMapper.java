@@ -11,11 +11,11 @@ public interface IngredientsMapper {
 
   int createIngredient(Ingredient ingredient);
 
-  List<Ingredient> listIngredients();
+  List<Ingredient> listIngredients(@Param("userId") String userId);
 
-  Ingredient getIngredientById(@Param("id") Integer id);
+  Ingredient getIngredientById(@Param("userId") String userId, @Param("id") Integer id);
 
   int updateIngredient(Ingredient ingredient);
 
-  int softDeleteIngredient(@Param("id") Integer id);
+  int softDeleteIngredient(@Param("userId") String userId, @Param("id") Integer id);
 }

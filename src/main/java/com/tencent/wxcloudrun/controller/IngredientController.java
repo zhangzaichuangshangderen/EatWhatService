@@ -5,6 +5,7 @@ import com.tencent.wxcloudrun.dto.IngredientCreateRequest;
 import com.tencent.wxcloudrun.dto.IngredientUpdateRequest;
 import com.tencent.wxcloudrun.model.Ingredient;
 import com.tencent.wxcloudrun.service.IngredientService;
+import com.tencent.wxcloudrun.util.WxUserContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Optional;
@@ -36,7 +38,12 @@ public class IngredientController {
   }
 
   @PostMapping(value = "/api/ingredients")
-  ApiResponse create(@RequestBody IngredientCreateRequest request) {
+  ApiResponse create(@RequestBody IngredientCreateRequest request, HttpServletRequest httpRequest) {
+    Optional<String> userId = WxUserContext.resolveOpenId(httpRequest);
+    if (!userId.isPresent()) {
+      return ApiResponse.error("未登录，请从小程序访问");
+    }
+
     String validationError = validateRequest(request.getName(), request.getCategory(), request.getUnit(), request.getKcal(),
       request.getCarbs(), request.getProtein(), request.getFat());
     if (validationError != null) {
@@ -45,18 +52,26 @@ public class IngredientController {
 
     Ingredient ingredient = buildIngredient(request.getName(), request.getCategory(), request.getUnit(), request.getKcal(),
       request.getCarbs(), request.getProtein(), request.getFat());
-    Ingredient created = ingredientService.createIngredient(ingredient);
-    logger.info("created ingredient id={}", created.getId());
+    Ingredient created = ingredientService.createIngredient(userId.get(), ingredient);
+    logger.info("created ingredient id={} userId={}", created.getId(), userId.get());
     return ApiResponse.ok(created);
   }
 
   @GetMapping(value = "/api/ingredients")
-  ApiResponse list() {
-    return ApiResponse.ok(ingredientService.listIngredients());
+  ApiResponse list(HttpServletRequest httpRequest) {
+    Optional<String> userId = WxUserContext.resolveOpenId(httpRequest);
+    if (!userId.isPresent()) {
+      return ApiResponse.error("未登录，请从小程序访问");
+    }
+    return ApiResponse.ok(ingredientService.listIngredients(userId.get()));
   }
 
   @PutMapping(value = "/api/ingredients/{id}")
-  ApiResponse update(@PathVariable Integer id, @RequestBody IngredientUpdateRequest request) {
+  ApiResponse update(@PathVariable Integer id, @RequestBody IngredientUpdateRequest request, HttpServletRequest httpRequest) {
+    Optional<String> userId = WxUserContext.resolveOpenId(httpRequest);
+    if (!userId.isPresent()) {
+      return ApiResponse.error("未登录，请从小程序访问");
+    }
     if (id == null || id <= 0) {
       return ApiResponse.error("参数id错误");
     }
@@ -65,7 +80,7 @@ public class IngredientController {
     if (validationError != null) {
       return ApiResponse.error(validationError);
     }
-    Optional<Ingredient> existing = ingredientService.getIngredient(id);
+    Optional<Ingredient> existing = ingredientService.getIngredient(userId.get(), id);
     if (!existing.isPresent()) {
       return ApiResponse.error("食材不存在");
     }
@@ -73,24 +88,28 @@ public class IngredientController {
     Ingredient ingredient = buildIngredient(request.getName(), request.getCategory(), request.getUnit(), request.getKcal(),
       request.getCarbs(), request.getProtein(), request.getFat());
     ingredient.setId(id);
-    boolean updated = ingredientService.updateIngredient(ingredient);
+    boolean updated = ingredientService.updateIngredient(userId.get(), ingredient);
     if (!updated) {
       return ApiResponse.error("更新失败");
     }
-    Optional<Ingredient> updatedEntity = ingredientService.getIngredient(id);
+    Optional<Ingredient> updatedEntity = ingredientService.getIngredient(userId.get(), id);
     return ApiResponse.ok(updatedEntity.orElse(ingredient));
   }
 
   @DeleteMapping(value = "/api/ingredients/{id}")
-  ApiResponse delete(@PathVariable Integer id) {
+  ApiResponse delete(@PathVariable Integer id, HttpServletRequest httpRequest) {
+    Optional<String> userId = WxUserContext.resolveOpenId(httpRequest);
+    if (!userId.isPresent()) {
+      return ApiResponse.error("未登录，请从小程序访问");
+    }
     if (id == null || id <= 0) {
       return ApiResponse.error("参数id错误");
     }
-    boolean deleted = ingredientService.softDeleteIngredient(id);
+    boolean deleted = ingredientService.softDeleteIngredient(userId.get(), id);
     if (!deleted) {
       return ApiResponse.error("食材不存在或已删除");
     }
-    logger.info("soft deleted ingredient id={}", id);
+    logger.info("soft deleted ingredient id={} userId={}", id, userId.get());
     return ApiResponse.ok();
   }
 

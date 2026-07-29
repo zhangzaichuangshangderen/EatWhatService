@@ -18,9 +18,10 @@ CREATE TABLE `Ingredients` (
   `protein` decimal(8,2) NOT NULL DEFAULT '0.00',
   `fat` decimal(8,2) NOT NULL DEFAULT '0.00',
   `unit` varchar(8) NOT NULL,
+  `userId` varchar(64) NOT NULL COMMENT '微信 openid',
   `isDeleted` tinyint(1) NOT NULL DEFAULT '0',
   `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_isDeleted_updatedAt` (`isDeleted`, `updatedAt`)
+  KEY `idx_userId_isDeleted_updatedAt` (`userId`, `isDeleted`, `updatedAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

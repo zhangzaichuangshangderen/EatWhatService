@@ -7,13 +7,13 @@ import java.util.Optional;
 
 public interface IngredientService {
 
-  Ingredient createIngredient(Ingredient ingredient);
+  Ingredient createIngredient(String userId, Ingredient ingredient);
 
-  List<Ingredient> listIngredients();
+  List<Ingredient> listIngredients(String userId);
 
-  Optional<Ingredient> getIngredient(Integer id);
+  Optional<Ingredient> getIngredient(String userId, Integer id);
 
-  boolean updateIngredient(Ingredient ingredient);
+  boolean updateIngredient(String userId, Ingredient ingredient);
 
-  boolean softDeleteIngredient(Integer id);
+  boolean softDeleteIngredient(String userId, Integer id);
 }

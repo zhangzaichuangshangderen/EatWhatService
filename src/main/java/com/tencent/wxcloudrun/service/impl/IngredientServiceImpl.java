@@ -19,28 +19,30 @@ public class IngredientServiceImpl implements IngredientService {
   }
 
   @Override
-  public Ingredient createIngredient(Ingredient ingredient) {
+  public Ingredient createIngredient(String userId, Ingredient ingredient) {
+    ingredient.setUserId(userId);
     ingredientsMapper.createIngredient(ingredient);
-    return ingredient;
+    return ingredientsMapper.getIngredientById(userId, ingredient.getId());
   }
 
   @Override
-  public List<Ingredient> listIngredients() {
-    return ingredientsMapper.listIngredients();
+  public List<Ingredient> listIngredients(String userId) {
+    return ingredientsMapper.listIngredients(userId);
   }
 
   @Override
-  public Optional<Ingredient> getIngredient(Integer id) {
-    return Optional.ofNullable(ingredientsMapper.getIngredientById(id));
+  public Optional<Ingredient> getIngredient(String userId, Integer id) {
+    return Optional.ofNullable(ingredientsMapper.getIngredientById(userId, id));
   }
 
   @Override
-  public boolean updateIngredient(Ingredient ingredient) {
+  public boolean updateIngredient(String userId, Ingredient ingredient) {
+    ingredient.setUserId(userId);
     return ingredientsMapper.updateIngredient(ingredient) > 0;
   }
 
   @Override
-  public boolean softDeleteIngredient(Integer id) {
-    return ingredientsMapper.softDeleteIngredient(id) > 0;
+  public boolean softDeleteIngredient(String userId, Integer id) {
+    return ingredientsMapper.softDeleteIngredient(userId, id) > 0;
   }
 }
