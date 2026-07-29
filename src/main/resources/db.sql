@@ -1,3 +1,6 @@
+CREATE DATABASE IF NOT EXISTS eatwhat;
+USE eatwhat;
+
 CREATE TABLE `Counters` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `count` int(11) NOT NULL DEFAULT '1',

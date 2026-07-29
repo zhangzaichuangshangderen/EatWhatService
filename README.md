@@ -151,7 +151,8 @@ curl -X POST -H 'content-type: application/json' -d '{"action": "inc"}' https://
 - MYSQL_ADDRESS
 - MYSQL_PASSWORD
 - MYSQL_USERNAME
-以上三个变量的值请按实际情况填写。如果使用云托管内MySQL，可以在控制台MySQL页面获取相关信息。
+- MYSQL_DATABASE（可选，默认 `eatwhat`）
+以上变量的值请按实际情况填写。如果使用云托管内 MySQL，可以在控制台 MySQL 页面获取相关信息。
 
 ## 关联前端仓库与联调
 
