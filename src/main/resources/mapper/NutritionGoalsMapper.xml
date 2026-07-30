@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.tencent.wxcloudrun.dao.NutritionGoalsMapper">
+
+    <resultMap id="nutritionGoalMapper" type="com.tencent.wxcloudrun.model.NutritionGoal">
+        <result property="userId" column="userId"/>
+        <result property="targetKcal" column="targetKcal" javaType="java.lang.Double"/>
+        <result property="source" column="source"/>
+        <result property="bmrKcal" column="bmrKcal" javaType="java.lang.Double"/>
+        <result property="tdeeKcal" column="tdeeKcal" javaType="java.lang.Double"/>
+        <result property="goalType" column="goalType"/>
+        <result property="updatedAt" column="updatedAt" javaType="java.time.LocalDateTime"/>
+    </resultMap>
+
+    <select id="findByUserId" resultMap="nutritionGoalMapper">
+        SELECT `userId`, `targetKcal`, `source`, `bmrKcal`, `tdeeKcal`, `goalType`, `updatedAt`
+        FROM `NutritionGoals`
+        WHERE `userId` = #{userId}
+    </select>
+
+    <insert id="upsert" parameterType="com.tencent.wxcloudrun.model.NutritionGoal">
+        INSERT INTO `NutritionGoals`(`userId`, `targetKcal`, `source`, `bmrKcal`, `tdeeKcal`, `goalType`)
+        VALUES (#{userId}, #{targetKcal}, #{source}, #{bmrKcal}, #{tdeeKcal}, #{goalType})
+        ON DUPLICATE KEY UPDATE
+          `targetKcal` = VALUES(`targetKcal`),
+          `source` = VALUES(`source`),
+          `bmrKcal` = VALUES(`bmrKcal`),
+          `tdeeKcal` = VALUES(`tdeeKcal`),
+          `goalType` = VALUES(`goalType`),
+          `updatedAt` = CURRENT_TIMESTAMP
+    </insert>
+
+</mapper>
