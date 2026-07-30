@@ -1,3 +1,4 @@
+
 CREATE TABLE IF NOT EXISTS `NutritionGoals` (
   `userId` varchar(64) NOT NULL COMMENT '微信 openid',
   `targetKcal` decimal(10,2) NOT NULL,
