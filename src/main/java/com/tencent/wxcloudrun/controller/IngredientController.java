@@ -38,22 +38,25 @@ public class IngredientController {
   }
 
   @PostMapping(value = "/api/ingredients")
-  ApiResponse create(@RequestBody IngredientCreateRequest request, HttpServletRequest httpRequest) {
+  ApiResponse create(@RequestBody(required = false) IngredientCreateRequest request, HttpServletRequest httpRequest) {
     Optional<String> userId = WxUserContext.resolveOpenId(httpRequest);
     if (!userId.isPresent()) {
       return ApiResponse.error("未登录，请从小程序访问");
     }
 
+    if (request == null) {
+      return ApiResponse.error("食材数据不能为空");
+    }
     String validationError = validateRequest(request.getName(), request.getCategory(), request.getUnit(), request.getKcal(),
-      request.getCarbs(), request.getProtein(), request.getFat());
+      request.getCarbs(), request.getProtein(), request.getFat(), request.getFiber(), request.getApproxUnit());
     if (validationError != null) {
       return ApiResponse.error(validationError);
     }
 
     Ingredient ingredient = buildIngredient(request.getName(), request.getCategory(), request.getUnit(), request.getKcal(),
-      request.getCarbs(), request.getProtein(), request.getFat());
+      request.getCarbs(), request.getProtein(), request.getFat(), request.getFiber(), request.getApproxUnit());
     Ingredient created = ingredientService.createIngredient(userId.get(), ingredient);
-    logger.info("created ingredient id={} userId={}", created.getId(), userId.get());
+    logger.info("created ingredient id={}", created.getId());
     return ApiResponse.ok(created);
   }
 
@@ -67,7 +70,8 @@ public class IngredientController {
   }
 
   @PutMapping(value = "/api/ingredients/{id}")
-  ApiResponse update(@PathVariable Integer id, @RequestBody IngredientUpdateRequest request, HttpServletRequest httpRequest) {
+  ApiResponse update(@PathVariable Integer id, @RequestBody(required = false) IngredientUpdateRequest request,
+                     HttpServletRequest httpRequest) {
     Optional<String> userId = WxUserContext.resolveOpenId(httpRequest);
     if (!userId.isPresent()) {
       return ApiResponse.error("未登录，请从小程序访问");
@@ -75,8 +79,11 @@ public class IngredientController {
     if (id == null || id <= 0) {
       return ApiResponse.error("参数id错误");
     }
+    if (request == null) {
+      return ApiResponse.error("食材数据不能为空");
+    }
     String validationError = validateRequest(request.getName(), request.getCategory(), request.getUnit(), request.getKcal(),
-      request.getCarbs(), request.getProtein(), request.getFat());
+      request.getCarbs(), request.getProtein(), request.getFat(), request.getFiber(), request.getApproxUnit());
     if (validationError != null) {
       return ApiResponse.error(validationError);
     }
@@ -86,7 +93,7 @@ public class IngredientController {
     }
 
     Ingredient ingredient = buildIngredient(request.getName(), request.getCategory(), request.getUnit(), request.getKcal(),
-      request.getCarbs(), request.getProtein(), request.getFat());
+      request.getCarbs(), request.getProtein(), request.getFat(), request.getFiber(), request.getApproxUnit());
     ingredient.setId(id);
     boolean updated = ingredientService.updateIngredient(userId.get(), ingredient);
     if (!updated) {
@@ -109,11 +116,12 @@ public class IngredientController {
     if (!deleted) {
       return ApiResponse.error("食材不存在或已删除");
     }
-    logger.info("soft deleted ingredient id={} userId={}", id, userId.get());
+    logger.info("soft deleted ingredient id={}", id);
     return ApiResponse.ok();
   }
 
-  private String validateRequest(String name, String category, String unit, Double kcal, Double carbs, Double protein, Double fat) {
+  private String validateRequest(String name, String category, String unit, Double kcal, Double carbs, Double protein,
+                                 Double fat, Double fiber, String approxUnit) {
     if (name == null || name.trim().isEmpty()) {
       return "食材名称不能为空";
     }
@@ -141,14 +149,21 @@ public class IngredientController {
     if (!isInRange(fat, 0, 999)) {
       return "脂肪超出范围";
     }
+    if (fiber != null && !isInRange(fiber, 0, 999)) {
+      return "膳食纤维超出范围";
+    }
+    if (approxUnit != null && approxUnit.trim().length() > 128) {
+      return "份量说明长度不能超过128";
+    }
     return null;
   }
 
   private boolean isInRange(Double value, double min, double max) {
-    return value >= min && value <= max;
+    return value != null && Double.isFinite(value) && value >= min && value <= max;
   }
 
-  private Ingredient buildIngredient(String name, String category, String unit, Double kcal, Double carbs, Double protein, Double fat) {
+  private Ingredient buildIngredient(String name, String category, String unit, Double kcal, Double carbs, Double protein,
+                                     Double fat, Double fiber, String approxUnit) {
     Ingredient ingredient = new Ingredient();
     ingredient.setName(name.trim());
     ingredient.setCategory(category);
@@ -157,6 +172,8 @@ public class IngredientController {
     ingredient.setCarbs(carbs);
     ingredient.setProtein(protein);
     ingredient.setFat(fat);
+    ingredient.setFiber(fiber);
+    ingredient.setApproxUnit(approxUnit == null || approxUnit.trim().isEmpty() ? null : approxUnit.trim());
     return ingredient;
   }
 }

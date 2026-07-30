@@ -17,5 +17,9 @@ public class IngredientCreateRequest {
 
   private Double fat;
 
+  private Double fiber;
+
   private String unit;
+
+  private String approxUnit;
 }

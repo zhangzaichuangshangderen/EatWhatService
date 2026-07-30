@@ -41,6 +41,14 @@
 
 ## 服务 API 文档
 
+所有业务接口均由微信云托管注入的 `X-WX-OPENID` 识别用户；客户端不得提交或覆盖 `userId`。
+
+### 食材目录
+
+#### `GET /api/foods`
+
+返回基础食材与当前用户自定义食材的合并列表。基础食材由服务端 `foods.json` 提供，自定义食材来自 MySQL。响应项的 `custom` 字段用于区分是否为用户自定义食材。小程序首页使用该接口，不再读取前端本地基础食材文件。
+
 ### 食材管理 CRUD
 
 > 说明：该接口为**按用户隔离**的「我的食材」库，用户身份来自微信云托管注入的 `X-WX-OPENID` 请求头（小程序需使用 `wx.cloud.callContainer` 调用）。删除采用软删除（`isDeleted=1`）。
@@ -61,6 +69,8 @@
   "carbs": 6.5,
   "protein": 15,
   "fat": 6,
+  "fiber": 2.5,
+  "approxUnit": "1根约40g",
   "unit": "g"
 }
 ```
@@ -79,6 +89,51 @@
 #### `DELETE /api/ingredients/{id}`
 
 软删除指定食材（更新 `isDeleted` 为 `1`）。
+
+### 指定日期饮食记录
+
+#### `GET /api/diet-records/{date}`
+
+拉取当前用户指定日期的饮食记录，`date` 必须为 `yyyy-MM-dd`。`meals` 固定按早餐、午餐、加餐、晚餐返回；无记录的单餐 `record` 为 `null`，全天无数据时四个 `record` 均为 `null`。
+
+```json
+{
+  "code": 0,
+  "errorMsg": "",
+  "data": {
+    "date": "2026-07-30",
+    "meals": [
+      { "mealKey": "breakfast", "mealLabel": "早餐", "record": null },
+      { "mealKey": "lunch", "mealLabel": "午餐", "record": null },
+      { "mealKey": "snack", "mealLabel": "加餐", "record": null },
+      { "mealKey": "dinner", "mealLabel": "晚餐", "record": null }
+    ]
+  }
+}
+```
+
+#### `PUT /api/diet-records/{date}/{mealKey}`
+
+幂等新增或覆盖指定餐次。`mealKey` 仅允许 `breakfast`、`lunch`、`snack`、`dinner`。请求体示例：
+
+```json
+{
+  "id": "log_1785396600000",
+  "score": 89.4,
+  "totals": { "kcal": 400.7, "carbs": 51.9, "protein": 26.8, "fat": 10.1, "fiber": 5.3 },
+  "items": [
+    { "id": "c11", "name": "蒸土豆/马铃薯", "category": "carbs", "unit": "g", "amount": 150, "kcal": 69, "carbs": 15.3, "protein": 2, "fat": 0.1 }
+  ],
+  "acceptedAt": "2026-07-30T07:30:00.000Z",
+  "dayGoalKcal": 1800
+}
+```
+
+成功响应与查询接口相同，返回更新后的四个餐次槽位。
+
+#### `DELETE /api/diet-records/{date}/{mealKey}`
+
+清空指定餐次；即使该餐原本为空也返回成功。成功响应为删除后的四个餐次槽位。
 
 ### `GET /api/count`
 
@@ -158,14 +213,20 @@ curl -X POST -H 'content-type: application/json' -d '{"action": "inc"}' https://
 
 ## 数据库升级（已有环境）
 
-若 `Ingredients` 表已存在但缺少 `userId` 字段，请在 MySQL 控制台执行：
+若 `Ingredients` 表已存在但缺少 `userId` 字段，请先执行：
 
 `src/main/resources/db_migration_add_userId.sql`
 
+再执行以下脚本，增加食材的膳食纤维/份量说明字段与饮食记录表：
+
+`src/main/resources/db_migration_add_diet_records_and_ingredient_fields.sql`
+
+迁移脚本不会自动执行，也不要直接在生产库试跑；应先备份并在隔离库验证。若 `fiber` 或 `approxUnit` 已由其他变更添加，请跳过脚本中对应的 `ALTER TABLE`。
+
 ## 关联前端仓库与联调
 
-- 前端仓库路径：`/Users/lemon.wu/Code/wechat/eatwhat`
-- 小程序通过 `wx.cloud.callContainer` 访问本服务 `/api/ingredients`，微信会自动注入用户 openid。
+- 前端仓库路径：`/Users/lemon.wu/Code/wechat/EatWhat`
+- 小程序通过 `wx.cloud.callContainer` 访问本服务 `/api/foods`、`/api/ingredients` 和 `/api/diet-records`，微信会自动注入用户 openid。
 - 前端需在 `app.ts` 配置云环境与服务名（存储键）：
   - `EATWHAT_CLOUD_ENV`：云环境 ID（云托管控制台获取）
   - `EATWHAT_CLOUD_SERVICE`：云托管服务名（如 `springboot-kq61`）

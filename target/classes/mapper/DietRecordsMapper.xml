@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.tencent.wxcloudrun.dao.DietRecordsMapper">
+
+    <resultMap id="dietRecordMapper" type="com.tencent.wxcloudrun.model.DietRecord">
+        <id property="id" column="id"/>
+        <result property="userId" column="userId"/>
+        <result property="recordDate" column="recordDate" javaType="java.time.LocalDate"/>
+        <result property="mealKey" column="mealKey"/>
+        <result property="clientRecordId" column="clientRecordId"/>
+        <result property="score" column="score" javaType="java.lang.Double"/>
+        <result property="kcal" column="kcal" javaType="java.lang.Double"/>
+        <result property="carbs" column="carbs" javaType="java.lang.Double"/>
+        <result property="protein" column="protein" javaType="java.lang.Double"/>
+        <result property="fat" column="fat" javaType="java.lang.Double"/>
+        <result property="fiber" column="fiber" javaType="java.lang.Double"/>
+        <result property="itemsJson" column="itemsJson"/>
+        <result property="acceptedAt" column="acceptedAt"/>
+        <result property="dayGoalKcal" column="dayGoalKcal" javaType="java.lang.Double"/>
+        <result property="createdAt" column="createdAt" javaType="java.time.LocalDateTime"/>
+        <result property="updatedAt" column="updatedAt" javaType="java.time.LocalDateTime"/>
+    </resultMap>
+
+    <select id="listByDate" resultMap="dietRecordMapper">
+        SELECT `id`, `userId`, `recordDate`, `mealKey`, `clientRecordId`, `score`, `kcal`, `carbs`,
+               `protein`, `fat`, `fiber`, `itemsJson`, `acceptedAt`, `dayGoalKcal`, `createdAt`, `updatedAt`
+        FROM `DietRecords`
+        WHERE `userId` = #{userId}
+          AND `recordDate` = #{recordDate}
+        ORDER BY FIELD(`mealKey`, 'breakfast', 'lunch', 'snack', 'dinner')
+    </select>
+
+    <insert id="upsert" parameterType="com.tencent.wxcloudrun.model.DietRecord">
+        INSERT INTO `DietRecords`(
+          `userId`, `recordDate`, `mealKey`, `clientRecordId`, `score`, `kcal`, `carbs`, `protein`,
+          `fat`, `fiber`, `itemsJson`, `acceptedAt`, `dayGoalKcal`
+        ) VALUES (
+          #{userId}, #{recordDate}, #{mealKey}, #{clientRecordId}, #{score}, #{kcal}, #{carbs}, #{protein},
+          #{fat}, #{fiber}, #{itemsJson}, #{acceptedAt}, #{dayGoalKcal}
+        )
+        ON DUPLICATE KEY UPDATE
+          `clientRecordId` = VALUES(`clientRecordId`),
+          `score` = VALUES(`score`),
+          `kcal` = VALUES(`kcal`),
+          `carbs` = VALUES(`carbs`),
+          `protein` = VALUES(`protein`),
+          `fat` = VALUES(`fat`),
+          `fiber` = VALUES(`fiber`),
+          `itemsJson` = VALUES(`itemsJson`),
+          `acceptedAt` = VALUES(`acceptedAt`),
+          `dayGoalKcal` = VALUES(`dayGoalKcal`),
+          `updatedAt` = CURRENT_TIMESTAMP
+    </insert>
+
+    <delete id="deleteByMeal">
+        DELETE FROM `DietRecords`
+        WHERE `userId` = #{userId}
+          AND `recordDate` = #{recordDate}
+          AND `mealKey` = #{mealKey}
+    </delete>
+
+</mapper>

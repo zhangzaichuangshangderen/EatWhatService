@@ -3,23 +3,11 @@ package com.tencent.wxcloudrun.dto;
 import lombok.Data;
 
 @Data
-public class IngredientUpdateRequest {
-
-  private String name;
-
-  private String category;
+public class DietNutrition {
 
   private Double kcal;
-
   private Double carbs;
-
   private Double protein;
-
   private Double fat;
-
   private Double fiber;
-
-  private String unit;
-
-  private String approxUnit;
 }
