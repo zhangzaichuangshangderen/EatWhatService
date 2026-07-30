@@ -30,6 +30,15 @@
         ORDER BY FIELD(`mealKey`, 'breakfast', 'lunch', 'snack', 'dinner')
     </select>
 
+    <select id="listMonthEntries" resultType="com.tencent.wxcloudrun.model.DietRecordMonthEntry">
+        SELECT `recordDate`, `mealKey`
+        FROM `DietRecords`
+        WHERE `userId` = #{userId}
+          AND `recordDate` &gt;= #{startDate}
+          AND `recordDate` &lt; #{endDate}
+        ORDER BY `recordDate`, FIELD(`mealKey`, 'breakfast', 'lunch', 'snack', 'dinner')
+    </select>
+
     <insert id="upsert" parameterType="com.tencent.wxcloudrun.model.DietRecord">
         INSERT INTO `DietRecords`(
           `userId`, `recordDate`, `mealKey`, `clientRecordId`, `score`, `kcal`, `carbs`, `protein`,

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -67,6 +68,17 @@ class DietRecordControllerTest {
     controller.upsertMeal("2026-07-30", "snack", request, loggedInRequest);
 
     verify(service).upsertMeal(eq("user-a"), eq(LocalDate.of(2026, 7, 30)), eq("snack"), eq(request));
+  }
+
+  @Test
+  void validatesMonthAndPassesTrustedUserToService() {
+    ApiResponse unauthenticated = controller.getMonth("2026-07", new MockHttpServletRequest());
+    ApiResponse invalidMonth = controller.getMonth("2026-13", loggedInRequest);
+
+    assertEquals("未登录，请从小程序访问", unauthenticated.getErrorMsg());
+    assertEquals("月份格式错误，请使用yyyy-MM", invalidMonth.getErrorMsg());
+    controller.getMonth("2026-07", loggedInRequest);
+    verify(service).getMonth("user-a", YearMonth.of(2026, 7));
   }
 
   private DietRecordUpsertRequest validRequest() {

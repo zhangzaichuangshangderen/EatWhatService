@@ -92,6 +92,23 @@
 
 ### 指定日期饮食记录
 
+#### `GET /api/diet-records/month/{month}`
+
+拉取当前用户指定月份的轻量食记摘要，`month` 必须为 `yyyy-MM`。只返回有记录的日期和餐次键，供月历标记使用；不返回食材与营养详情。
+
+```json
+{
+  "code": 0,
+  "errorMsg": "",
+  "data": {
+    "month": "2026-07",
+    "days": [
+      { "date": "2026-07-30", "mealKeys": ["breakfast", "lunch"] }
+    ]
+  }
+}
+```
+
 #### `GET /api/diet-records/{date}`
 
 拉取当前用户指定日期的饮食记录，`date` 必须为 `yyyy-MM-dd`。`meals` 固定按早餐、午餐、加餐、晚餐返回；无记录的单餐 `record` 为 `null`，全天无数据时四个 `record` 均为 `null`。
@@ -134,6 +151,31 @@
 #### `DELETE /api/diet-records/{date}/{mealKey}`
 
 清空指定餐次；即使该餐原本为空也返回成功。成功响应为删除后的四个餐次槽位。
+
+### 用户能量目标
+
+#### `GET /api/nutrition-goal`
+
+查询当前用户的能量目标。尚未设置时 `data` 为 `null`。
+
+#### `PUT /api/nutrition-goal`
+
+幂等创建或更新当前用户的能量目标。客户端不能提交 `userId`。
+
+```json
+{
+  "targetKcal": 1800,
+  "source": "calculator",
+  "bmrKcal": 1420,
+  "tdeeKcal": 2110,
+  "goalType": "lose"
+}
+```
+
+- `targetKcal`：800–4500 kcal。
+- `source`：`manual` 或 `calculator`。
+- `goalType`：`maintain`、`lose` 或 `gain`。
+- `source=calculator` 时必须同时提供 `bmrKcal` 与 `tdeeKcal`；手动目标可为空。
 
 ### `GET /api/count`
 
@@ -221,12 +263,16 @@ curl -X POST -H 'content-type: application/json' -d '{"action": "inc"}' https://
 
 `src/main/resources/db_migration_add_diet_records_and_ingredient_fields.sql`
 
+最后执行用户能量目标表迁移：
+
+`src/main/resources/db_migration_add_nutrition_goals.sql`
+
 迁移脚本不会自动执行，也不要直接在生产库试跑；应先备份并在隔离库验证。若 `fiber` 或 `approxUnit` 已由其他变更添加，请跳过脚本中对应的 `ALTER TABLE`。
 
 ## 关联前端仓库与联调
 
 - 前端仓库路径：`/Users/lemon.wu/Code/wechat/EatWhat`
-- 小程序通过 `wx.cloud.callContainer` 访问本服务 `/api/foods`、`/api/ingredients` 和 `/api/diet-records`，微信会自动注入用户 openid。
+- 小程序通过 `wx.cloud.callContainer` 访问本服务 `/api/foods`、`/api/ingredients`、`/api/diet-records` 和 `/api/nutrition-goal`，微信会自动注入用户 openid。
 - 前端需在 `app.ts` 配置云环境与服务名（存储键）：
   - `EATWHAT_CLOUD_ENV`：云环境 ID（云托管控制台获取）
   - `EATWHAT_CLOUD_SERVICE`：云托管服务名（如 `springboot-kq61`）

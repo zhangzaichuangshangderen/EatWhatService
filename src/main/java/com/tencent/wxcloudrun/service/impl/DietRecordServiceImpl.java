@@ -7,21 +7,26 @@ import com.tencent.wxcloudrun.dao.DietRecordsMapper;
 import com.tencent.wxcloudrun.dto.DietFoodItem;
 import com.tencent.wxcloudrun.dto.DietNutrition;
 import com.tencent.wxcloudrun.dto.DietRecordDayResponse;
+import com.tencent.wxcloudrun.dto.DietRecordMonthDayResponse;
+import com.tencent.wxcloudrun.dto.DietRecordMonthResponse;
 import com.tencent.wxcloudrun.dto.DietRecordResponse;
 import com.tencent.wxcloudrun.dto.DietRecordSlotResponse;
 import com.tencent.wxcloudrun.dto.DietRecordUpsertRequest;
 import com.tencent.wxcloudrun.model.DietRecord;
+import com.tencent.wxcloudrun.model.DietRecordMonthEntry;
 import com.tencent.wxcloudrun.service.DietRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
@@ -57,6 +62,22 @@ public class DietRecordServiceImpl implements DietRecordService {
       ));
     }
     return new DietRecordDayResponse(date.toString(), slots);
+  }
+
+  @Override
+  public DietRecordMonthResponse getMonth(String userId, YearMonth month) {
+    LocalDate startDate = month.atDay(1);
+    LocalDate endDate = month.plusMonths(1).atDay(1);
+    Map<LocalDate, List<String>> mealKeysByDate = new LinkedHashMap<>();
+    for (DietRecordMonthEntry entry : dietRecordsMapper.listMonthEntries(userId, startDate, endDate)) {
+      mealKeysByDate.computeIfAbsent(entry.getRecordDate(), ignored -> new ArrayList<>()).add(entry.getMealKey());
+    }
+
+    List<DietRecordMonthDayResponse> days = new ArrayList<>(mealKeysByDate.size());
+    for (Map.Entry<LocalDate, List<String>> entry : mealKeysByDate.entrySet()) {
+      days.add(new DietRecordMonthDayResponse(entry.getKey().toString(), entry.getValue()));
+    }
+    return new DietRecordMonthResponse(month.toString(), days);
   }
 
   @Override

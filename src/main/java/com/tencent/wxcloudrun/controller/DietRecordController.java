@@ -18,6 +18,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -48,6 +49,19 @@ public class DietRecordController {
       return ApiResponse.error("日期格式错误，请使用yyyy-MM-dd");
     }
     return ApiResponse.ok(dietRecordService.getDay(userId.get(), parsedDate));
+  }
+
+  @GetMapping(value = "/api/diet-records/month/{month}")
+  ApiResponse getMonth(@PathVariable String month, HttpServletRequest httpRequest) {
+    Optional<String> userId = WxUserContext.resolveOpenId(httpRequest);
+    if (!userId.isPresent()) {
+      return ApiResponse.error("未登录，请从小程序访问");
+    }
+    YearMonth parsedMonth = parseMonth(month);
+    if (parsedMonth == null) {
+      return ApiResponse.error("月份格式错误，请使用yyyy-MM");
+    }
+    return ApiResponse.ok(dietRecordService.getMonth(userId.get(), parsedMonth));
   }
 
   @PutMapping(value = "/api/diet-records/{date}/{mealKey}")
@@ -91,6 +105,14 @@ public class DietRecordController {
   private LocalDate parseDate(String date) {
     try {
       return LocalDate.parse(date);
+    } catch (DateTimeException | NullPointerException exception) {
+      return null;
+    }
+  }
+
+  private YearMonth parseMonth(String month) {
+    try {
+      return YearMonth.parse(month);
     } catch (DateTimeException | NullPointerException exception) {
       return null;
     }

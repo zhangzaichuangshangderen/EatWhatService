@@ -5,13 +5,17 @@ import com.tencent.wxcloudrun.dao.DietRecordsMapper;
 import com.tencent.wxcloudrun.dto.DietFoodItem;
 import com.tencent.wxcloudrun.dto.DietNutrition;
 import com.tencent.wxcloudrun.dto.DietRecordDayResponse;
+import com.tencent.wxcloudrun.dto.DietRecordMonthResponse;
 import com.tencent.wxcloudrun.dto.DietRecordUpsertRequest;
 import com.tencent.wxcloudrun.model.DietRecord;
+import com.tencent.wxcloudrun.model.DietRecordMonthEntry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -71,6 +75,29 @@ class DietRecordServiceImplTest {
     service.deleteMeal("user-b", date, "dinner");
 
     verify(mapper).deleteByMeal("user-b", date, "dinner");
+  }
+
+  @Test
+  void monthSummaryGroupsDatesAndKeepsMealOrder() {
+    DietRecordMonthEntry breakfast = monthEntry("2026-07-02", "breakfast");
+    DietRecordMonthEntry dinner = monthEntry("2026-07-02", "dinner");
+    DietRecordMonthEntry lunch = monthEntry("2026-07-20", "lunch");
+    when(mapper.listMonthEntries("user-a", LocalDate.of(2026, 7, 1), LocalDate.of(2026, 8, 1)))
+      .thenReturn(Arrays.asList(breakfast, dinner, lunch));
+
+    DietRecordMonthResponse response = service.getMonth("user-a", YearMonth.of(2026, 7));
+
+    assertEquals("2026-07", response.getMonth());
+    assertEquals(2, response.getDays().size());
+    assertEquals(Arrays.asList("breakfast", "dinner"), response.getDays().get(0).getMealKeys());
+    assertEquals("2026-07-20", response.getDays().get(1).getDate());
+  }
+
+  private DietRecordMonthEntry monthEntry(String date, String mealKey) {
+    DietRecordMonthEntry entry = new DietRecordMonthEntry();
+    entry.setRecordDate(LocalDate.parse(date));
+    entry.setMealKey(mealKey);
+    return entry;
   }
 
   private DietRecordUpsertRequest validRequest() {
