@@ -9,24 +9,40 @@
         <result property="bmrKcal" column="bmrKcal" javaType="java.lang.Double"/>
         <result property="tdeeKcal" column="tdeeKcal" javaType="java.lang.Double"/>
         <result property="goalType" column="goalType"/>
+        <result property="gender" column="gender"/>
+        <result property="age" column="age" javaType="java.lang.Integer"/>
+        <result property="height" column="height" javaType="java.lang.Double"/>
+        <result property="weight" column="weight" javaType="java.lang.Double"/>
+        <result property="occupationIndex" column="occupationIndex" javaType="java.lang.Integer"/>
+        <result property="exerciseLevelIndex" column="exerciseLevelIndex" javaType="java.lang.Integer"/>
         <result property="updatedAt" column="updatedAt" javaType="java.time.LocalDateTime"/>
     </resultMap>
 
     <select id="findByUserId" resultMap="nutritionGoalMapper">
-        SELECT `userId`, `targetKcal`, `source`, `bmrKcal`, `tdeeKcal`, `goalType`, `updatedAt`
+        SELECT `userId`, `targetKcal`, `source`, `bmrKcal`, `tdeeKcal`, `goalType`,
+               `gender`, `age`, `height`, `weight`, `occupationIndex`, `exerciseLevelIndex`,
+               `updatedAt`
         FROM `NutritionGoals`
         WHERE `userId` = #{userId}
     </select>
 
     <insert id="upsert" parameterType="com.tencent.wxcloudrun.model.NutritionGoal">
-        INSERT INTO `NutritionGoals`(`userId`, `targetKcal`, `source`, `bmrKcal`, `tdeeKcal`, `goalType`)
-        VALUES (#{userId}, #{targetKcal}, #{source}, #{bmrKcal}, #{tdeeKcal}, #{goalType})
+        INSERT INTO `NutritionGoals`(`userId`, `targetKcal`, `source`, `bmrKcal`, `tdeeKcal`, `goalType`,
+            `gender`, `age`, `height`, `weight`, `occupationIndex`, `exerciseLevelIndex`)
+        VALUES (#{userId}, #{targetKcal}, #{source}, #{bmrKcal}, #{tdeeKcal}, #{goalType},
+            #{gender}, #{age}, #{height}, #{weight}, #{occupationIndex}, #{exerciseLevelIndex})
         ON DUPLICATE KEY UPDATE
           `targetKcal` = VALUES(`targetKcal`),
           `source` = VALUES(`source`),
           `bmrKcal` = VALUES(`bmrKcal`),
           `tdeeKcal` = VALUES(`tdeeKcal`),
           `goalType` = VALUES(`goalType`),
+          `gender` = VALUES(`gender`),
+          `age` = VALUES(`age`),
+          `height` = VALUES(`height`),
+          `weight` = VALUES(`weight`),
+          `occupationIndex` = VALUES(`occupationIndex`),
+          `exerciseLevelIndex` = VALUES(`exerciseLevelIndex`),
           `updatedAt` = CURRENT_TIMESTAMP
     </insert>
 

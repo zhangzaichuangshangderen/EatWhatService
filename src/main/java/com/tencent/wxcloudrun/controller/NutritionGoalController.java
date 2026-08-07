@@ -74,6 +74,24 @@ public class NutritionGoalController {
       && (request.getBmrKcal() == null || request.getTdeeKcal() == null)) {
       return "测算目标缺少基础代谢或每日消耗";
     }
+    if (request.getGender() != null && !"male".equals(request.getGender()) && !"female".equals(request.getGender())) {
+      return "性别取值错误";
+    }
+    if (request.getAge() != null && (request.getAge() < 18 || request.getAge() > 90)) {
+      return "年龄应在18-90岁之间";
+    }
+    if (request.getHeight() != null && !isInRange(request.getHeight(), 120, 220)) {
+      return "身高应在120-220 cm之间";
+    }
+    if (request.getWeight() != null && !isInRange(request.getWeight(), 25, 250)) {
+      return "体重应在25-250 kg之间";
+    }
+    if (request.getOccupationIndex() != null && (request.getOccupationIndex() < 0 || request.getOccupationIndex() > 2)) {
+      return "职业活动等级取值错误";
+    }
+    if (request.getExerciseLevelIndex() != null && (request.getExerciseLevelIndex() < 0 || request.getExerciseLevelIndex() > 3)) {
+      return "运动等级取值错误";
+    }
     return null;
   }
 

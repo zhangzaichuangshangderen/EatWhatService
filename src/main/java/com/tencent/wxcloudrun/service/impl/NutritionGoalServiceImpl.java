@@ -32,6 +32,12 @@ public class NutritionGoalServiceImpl implements NutritionGoalService {
     goal.setBmrKcal(request.getBmrKcal());
     goal.setTdeeKcal(request.getTdeeKcal());
     goal.setGoalType(request.getGoalType());
+    goal.setGender(request.getGender());
+    goal.setAge(request.getAge());
+    goal.setHeight(request.getHeight());
+    goal.setWeight(request.getWeight());
+    goal.setOccupationIndex(request.getOccupationIndex());
+    goal.setExerciseLevelIndex(request.getExerciseLevelIndex());
     nutritionGoalsMapper.upsert(goal);
     return nutritionGoalsMapper.findByUserId(userId);
   }

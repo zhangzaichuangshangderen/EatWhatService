@@ -18,6 +18,11 @@ public class UserProfileServiceImpl implements UserProfileService {
   }
 
   @Override
+  public UserProfile findByUserId(String userId) {
+    return usersMapper.findByUserId(userId);
+  }
+
+  @Override
   @Transactional
   public UserProfile getOrCreate(String userId) {
     UserProfile existing = usersMapper.findByUserId(userId);

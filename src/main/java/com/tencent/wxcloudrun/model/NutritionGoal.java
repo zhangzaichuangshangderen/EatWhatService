@@ -16,5 +16,11 @@ public class NutritionGoal {
   private Double bmrKcal;
   private Double tdeeKcal;
   private String goalType;
+  private String gender;
+  private Integer age;
+  private Double height;
+  private Double weight;
+  private Integer occupationIndex;
+  private Integer exerciseLevelIndex;
   private LocalDateTime updatedAt;
 }

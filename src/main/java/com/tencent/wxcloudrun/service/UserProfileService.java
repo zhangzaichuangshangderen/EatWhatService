@@ -5,6 +5,8 @@ import com.tencent.wxcloudrun.model.UserProfile;
 
 public interface UserProfileService {
 
+  UserProfile findByUserId(String userId);
+
   UserProfile getOrCreate(String userId);
 
   UserProfile upsertProfile(String userId, UserProfileUpsertRequest request);

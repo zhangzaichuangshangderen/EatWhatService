@@ -1,0 +1,6 @@
+com/tencent/wxcloudrun/controller/UserProfileController.class
+com/tencent/wxcloudrun/dto/UserProfileUpsertRequest.class
+com/tencent/wxcloudrun/model/UserProfile.class
+com/tencent/wxcloudrun/service/impl/UserProfileServiceImpl.class
+com/tencent/wxcloudrun/dao/UsersMapper.class
+com/tencent/wxcloudrun/service/UserProfileService.class
