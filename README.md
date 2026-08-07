@@ -177,6 +177,23 @@
 - `goalType`：`maintain`、`lose` 或 `gain`。
 - `source=calculator` 时必须同时提供 `bmrKcal` 与 `tdeeKcal`；手动目标可为空。
 
+### 用户档案（昵称/头像）
+
+#### `GET /api/users/me`
+
+按当前用户 `openid` 查询档案；若不存在会自动创建空档案后返回。用于小程序启动时完成“首次建档”。
+
+#### `PUT /api/users/me`
+
+更新当前用户昵称与头像，入参可为空；空值不会覆盖已有内容。
+
+```json
+{
+  "nickName": "认真吃饭",
+  "avatarUrl": "https://thirdwx.qlogo.cn/mmopen/..."
+}
+```
+
 ## 使用注意
 如果不是通过微信云托管控制台部署模板代码，而是自行复制/下载模板代码后，手动新建一个服务并部署，需要在「服务设置」中补全以下环境变量，才可正常使用，否则会引发无法连接数据库，进而导致部署失败。
 - MYSQL_ADDRESS
@@ -198,6 +215,10 @@
 最后执行用户能量目标表迁移：
 
 `src/main/resources/db_migration_add_nutrition_goals.sql`
+
+最后执行用户档案表迁移：
+
+`src/main/resources/db_migration_add_users.sql`
 
 迁移脚本不会自动执行，也不要直接在生产库试跑；应先备份并在隔离库验证。若 `fiber` 或 `approxUnit` 已由其他变更添加，请跳过脚本中对应的 `ALTER TABLE`。
 
