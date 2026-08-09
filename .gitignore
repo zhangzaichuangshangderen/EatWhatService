@@ -1,0 +1,15 @@
+# ===== Maven 编译产物 =====
+target/
+*.class
+
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+
+
+# ===== 操作系统 / 编辑器 =====
+.DS_Store
+
+
