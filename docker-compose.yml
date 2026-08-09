@@ -1,0 +1,50 @@
+# EatWhatService 自建部署编排
+# 用法：在含 docker-compose.yml 的目录下
+#   1) cp .env.example .env  并填好密码
+#   2) docker compose up -d
+#
+# 端口说明：
+#   - 备案前（学习/验证期）：用 8080:80，浏览器访问 http://服务器IP:8080
+#   - 备案通过后（上线期）：改成 80:80，并由 Caddy/Nginx 反代 + HTTPS
+
+services:
+  app:
+    build: .
+    container_name: eatwhat-app
+    restart: always
+    # 备案前用 8080，备案后改成 "80:80"
+    ports:
+      - "8080:80"
+    environment:
+      # compose 内网用服务名 `mysql` 互通，无需服务器 IP
+      MYSQL_ADDRESS: mysql:3306
+      MYSQL_DATABASE: eatwhat
+      MYSQL_USERNAME: eatwhat
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: eatwhat-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: eatwhat
+      MYSQL_USER: eatwhat
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 首次启动自动建库建表（db.sql 内含 CREATE DATABASE + 4 张表）
+      - ./src/main/resources/db.sql:/docker-entrypoint-initdb.d/01-db.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql_data:
