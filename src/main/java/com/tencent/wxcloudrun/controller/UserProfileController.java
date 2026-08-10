@@ -28,7 +28,7 @@ public class UserProfileController {
     if (!userId.isPresent()) {
       return ApiResponse.error("未登录，请从小程序访问");
     }
-    return ApiResponse.ok(userProfileService.findByUserId(userId.get()));
+    return ApiResponse.ok(userProfileService.getOrCreate(userId.get()));
   }
 
   @PutMapping(value = "/api/users/me")

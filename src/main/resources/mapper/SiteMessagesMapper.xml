@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.tencent.wxcloudrun.dao.SiteMessagesMapper">
+
+    <resultMap id="siteMessageMapper" type="com.tencent.wxcloudrun.model.SiteMessage">
+        <id property="id" column="id"/>
+        <result property="userId" column="userId"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="type" column="type"/>
+        <result property="isRead" column="isRead" javaType="java.lang.Boolean"/>
+        <result property="createdAt" column="createdAt" javaType="java.time.LocalDateTime"/>
+        <result property="updatedAt" column="updatedAt" javaType="java.time.LocalDateTime"/>
+    </resultMap>
+
+    <insert id="create" parameterType="com.tencent.wxcloudrun.model.SiteMessage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `SiteMessages`(`userId`, `title`, `content`, `type`, `isRead`)
+        VALUES (#{userId}, #{title}, #{content}, #{type}, #{isRead})
+    </insert>
+
+    <select id="findById" resultMap="siteMessageMapper">
+        SELECT `id`, `userId`, `title`, `content`, `type`, `isRead`, `createdAt`, `updatedAt`
+        FROM `SiteMessages`
+        WHERE `id` = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="listByUserId" resultMap="siteMessageMapper">
+        SELECT `id`, `userId`, `title`, `content`, `type`, `isRead`, `createdAt`, `updatedAt`
+        FROM `SiteMessages`
+        WHERE `userId` = #{userId}
+        ORDER BY `createdAt` DESC, `id` DESC
+        LIMIT #{limit}
+    </select>
+
+    <update id="markRead">
+        UPDATE `SiteMessages`
+        SET `isRead` = 1,
+            `updatedAt` = CURRENT_TIMESTAMP
+        WHERE `id` = #{id}
+          AND `userId` = #{userId}
+    </update>
+
+    <select id="countUnread" resultType="int">
+        SELECT COUNT(1)
+        FROM `SiteMessages`
+        WHERE `userId` = #{userId}
+          AND `isRead` = 0
+    </select>
+
+    <select id="countByUserAndType" resultType="int">
+        SELECT COUNT(1)
+        FROM `SiteMessages`
+        WHERE `userId` = #{userId}
+          AND `type` = #{type}
+    </select>
+
+</mapper>

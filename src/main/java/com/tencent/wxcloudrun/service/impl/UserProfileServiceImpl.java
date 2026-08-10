@@ -4,6 +4,7 @@ import com.tencent.wxcloudrun.dao.UsersMapper;
 import com.tencent.wxcloudrun.dto.UserProfileUpsertRequest;
 import com.tencent.wxcloudrun.model.UserProfile;
 import com.tencent.wxcloudrun.service.UserProfileService;
+import com.tencent.wxcloudrun.service.SiteMessageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,9 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserProfileServiceImpl implements UserProfileService {
 
   private final UsersMapper usersMapper;
+  private final SiteMessageService siteMessageService;
 
-  public UserProfileServiceImpl(@Autowired UsersMapper usersMapper) {
+  public UserProfileServiceImpl(@Autowired UsersMapper usersMapper,
+                                @Autowired SiteMessageService siteMessageService) {
     this.usersMapper = usersMapper;
+    this.siteMessageService = siteMessageService;
   }
 
   @Override
@@ -27,10 +31,13 @@ public class UserProfileServiceImpl implements UserProfileService {
   public UserProfile getOrCreate(String userId) {
     UserProfile existing = usersMapper.findByUserId(userId);
     if (existing != null) {
+      siteMessageService.ensureWelcomeMessage(userId);
       return existing;
     }
     usersMapper.insertIgnore(userId);
-    return usersMapper.findByUserId(userId);
+    UserProfile created = usersMapper.findByUserId(userId);
+    siteMessageService.ensureWelcomeMessage(userId);
+    return created;
   }
 
   @Override
@@ -58,4 +65,5 @@ public class UserProfileServiceImpl implements UserProfileService {
     String trimmed = value.trim();
     return trimmed.isEmpty() ? null : trimmed;
   }
+
 }

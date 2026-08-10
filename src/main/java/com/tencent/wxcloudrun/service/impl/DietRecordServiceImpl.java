@@ -15,6 +15,7 @@ import com.tencent.wxcloudrun.dto.DietRecordUpsertRequest;
 import com.tencent.wxcloudrun.model.DietRecord;
 import com.tencent.wxcloudrun.model.DietRecordMonthEntry;
 import com.tencent.wxcloudrun.service.DietRecordService;
+import com.tencent.wxcloudrun.service.InviteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,10 +40,14 @@ public class DietRecordServiceImpl implements DietRecordService {
 
   private final DietRecordsMapper dietRecordsMapper;
   private final ObjectMapper objectMapper;
+  private final InviteService inviteService;
 
-  public DietRecordServiceImpl(@Autowired DietRecordsMapper dietRecordsMapper, @Autowired ObjectMapper objectMapper) {
+  public DietRecordServiceImpl(@Autowired DietRecordsMapper dietRecordsMapper,
+                               @Autowired ObjectMapper objectMapper,
+                               @Autowired InviteService inviteService) {
     this.dietRecordsMapper = dietRecordsMapper;
     this.objectMapper = objectMapper;
+    this.inviteService = inviteService;
   }
 
   @Override
@@ -99,6 +104,7 @@ public class DietRecordServiceImpl implements DietRecordService {
     record.setAcceptedAt(request.getAcceptedAt());
     record.setDayGoalKcal(request.getDayGoalKcal());
     dietRecordsMapper.upsert(record);
+    inviteService.markInviteeQualified(userId);
     return getDay(userId, date);
   }
 

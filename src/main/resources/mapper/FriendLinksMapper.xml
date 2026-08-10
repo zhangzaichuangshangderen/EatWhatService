@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.tencent.wxcloudrun.dao.FriendLinksMapper">
+    <resultMap id="friendLinkMapper" type="com.tencent.wxcloudrun.model.FriendLink">
+        <id property="id" column="id"/>
+        <result property="requesterUserId" column="requesterUserId"/>
+        <result property="viewerUserId" column="viewerUserId"/>
+        <result property="status" column="status"/>
+        <result property="requestNote" column="requestNote"/>
+        <result property="requestAt" column="requestAt" javaType="java.time.LocalDateTime"/>
+        <result property="confirmAt" column="confirmAt" javaType="java.time.LocalDateTime"/>
+        <result property="createdAt" column="createdAt" javaType="java.time.LocalDateTime"/>
+        <result property="updatedAt" column="updatedAt" javaType="java.time.LocalDateTime"/>
+    </resultMap>
+
+    <insert id="create" parameterType="com.tencent.wxcloudrun.model.FriendLink" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `Friends`(`requesterUserId`, `viewerUserId`, `status`, `requestNote`)
+        VALUES (#{requesterUserId}, #{viewerUserId}, #{status}, #{requestNote})
+    </insert>
+
+    <select id="findById" resultMap="friendLinkMapper">
+        SELECT `id`, `requesterUserId`, `viewerUserId`, `status`, `requestNote`, `requestAt`, `confirmAt`, `createdAt`, `updatedAt`
+        FROM `Friends`
+        WHERE `id` = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="findLatestByRequesterUserId" resultMap="friendLinkMapper">
+        SELECT `id`, `requesterUserId`, `viewerUserId`, `status`, `requestNote`, `requestAt`, `confirmAt`, `createdAt`, `updatedAt`
+        FROM `Friends`
+        WHERE `requesterUserId` = #{requesterUserId}
+        ORDER BY `id` DESC
+        LIMIT 1
+    </select>
+
+    <select id="findLatestByPair" resultMap="friendLinkMapper">
+        SELECT `id`, `requesterUserId`, `viewerUserId`, `status`, `requestNote`, `requestAt`, `confirmAt`, `createdAt`, `updatedAt`
+        FROM `Friends`
+        WHERE `requesterUserId` = #{requesterUserId}
+          AND `viewerUserId` = #{viewerUserId}
+        ORDER BY `id` DESC
+        LIMIT 1
+    </select>
+
+    <select id="listPendingByViewerUserId" resultMap="friendLinkMapper">
+        SELECT `id`, `requesterUserId`, `viewerUserId`, `status`, `requestNote`, `requestAt`, `confirmAt`, `createdAt`, `updatedAt`
+        FROM `Friends`
+        WHERE `viewerUserId` = #{viewerUserId}
+          AND `status` = 'pending'
+        ORDER BY `requestAt` DESC, `id` DESC
+    </select>
+
+    <select id="listConfirmedByViewerUserId" resultMap="friendLinkMapper">
+        SELECT `id`, `requesterUserId`, `viewerUserId`, `status`, `requestNote`, `requestAt`, `confirmAt`, `createdAt`, `updatedAt`
+        FROM `Friends`
+        WHERE `viewerUserId` = #{viewerUserId}
+          AND `status` = 'confirmed'
+        ORDER BY `confirmAt` DESC, `id` DESC
+    </select>
+
+    <select id="listConfirmedByRequesterUserId" resultMap="friendLinkMapper">
+        SELECT `id`, `requesterUserId`, `viewerUserId`, `status`, `requestNote`, `requestAt`, `confirmAt`, `createdAt`, `updatedAt`
+        FROM `Friends`
+        WHERE `requesterUserId` = #{requesterUserId}
+          AND `status` = 'confirmed'
+        ORDER BY `confirmAt` DESC, `id` DESC
+    </select>
+
+    <select id="countConfirmedBetween" resultType="int">
+        SELECT COUNT(1)
+        FROM `Friends`
+        WHERE `status` = 'confirmed'
+          AND (
+            (`requesterUserId` = #{userIdA} AND `viewerUserId` = #{userIdB})
+            OR
+            (`requesterUserId` = #{userIdB} AND `viewerUserId` = #{userIdA})
+          )
+    </select>
+
+    <update id="updateStatus">
+        UPDATE `Friends`
+        SET `status` = #{status},
+            `confirmAt` = #{confirmAt},
+            `updatedAt` = CURRENT_TIMESTAMP
+        WHERE `id` = #{id}
+          AND `viewerUserId` = #{viewerUserId}
+          AND `status` = 'pending'
+    </update>
+
+    <update id="updateStatusFromAny">
+        UPDATE `Friends`
+        SET `status` = #{status},
+            `confirmAt` = #{confirmAt},
+            `updatedAt` = CURRENT_TIMESTAMP
+        WHERE `id` = #{id}
+          AND `viewerUserId` = #{viewerUserId}
+    </update>
+
+    <update id="updateRequestAsPending">
+        UPDATE `Friends`
+        SET `status` = 'pending',
+            `requestNote` = #{requestNote},
+            `confirmAt` = NULL,
+            `requestAt` = CURRENT_TIMESTAMP,
+            `updatedAt` = CURRENT_TIMESTAMP
+        WHERE `id` = #{id}
+          AND `viewerUserId` = #{viewerUserId}
+    </update>
+
+</mapper>

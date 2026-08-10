@@ -9,6 +9,7 @@ import com.tencent.wxcloudrun.dto.DietRecordMonthResponse;
 import com.tencent.wxcloudrun.dto.DietRecordUpsertRequest;
 import com.tencent.wxcloudrun.model.DietRecord;
 import com.tencent.wxcloudrun.model.DietRecordMonthEntry;
+import com.tencent.wxcloudrun.service.InviteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -28,12 +29,14 @@ import static org.mockito.Mockito.when;
 class DietRecordServiceImplTest {
 
   private DietRecordsMapper mapper;
+  private InviteService inviteService;
   private DietRecordServiceImpl service;
 
   @BeforeEach
   void setUp() {
     mapper = mock(DietRecordsMapper.class);
-    service = new DietRecordServiceImpl(mapper, new ObjectMapper());
+    inviteService = mock(InviteService.class);
+    service = new DietRecordServiceImpl(mapper, new ObjectMapper(), inviteService);
   }
 
   @Test
@@ -65,6 +68,7 @@ class DietRecordServiceImplTest {
     assertEquals("user-a", captor.getValue().getUserId());
     assertEquals(date, captor.getValue().getRecordDate());
     assertEquals("breakfast", captor.getValue().getMealKey());
+    verify(inviteService).markInviteeQualified("user-a");
   }
 
   @Test

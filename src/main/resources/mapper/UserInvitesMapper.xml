@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.tencent.wxcloudrun.dao.UserInvitesMapper">
+
+    <resultMap id="userInviteMapper" type="com.tencent.wxcloudrun.model.UserInvite">
+        <id property="id" column="id"/>
+        <result property="inviterUserId" column="inviterUserId"/>
+        <result property="inviteeUserId" column="inviteeUserId"/>
+        <result property="bindAt" column="bindAt" javaType="java.time.LocalDateTime"/>
+        <result property="isQualified" column="isQualified" javaType="java.lang.Boolean"/>
+        <result property="qualifiedAt" column="qualifiedAt" javaType="java.time.LocalDateTime"/>
+        <result property="createdAt" column="createdAt" javaType="java.time.LocalDateTime"/>
+        <result property="updatedAt" column="updatedAt" javaType="java.time.LocalDateTime"/>
+    </resultMap>
+
+    <insert id="create" parameterType="com.tencent.wxcloudrun.model.UserInvite" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `UserInvites`(`inviterUserId`, `inviteeUserId`, `isQualified`)
+        VALUES (#{inviterUserId}, #{inviteeUserId}, #{isQualified})
+    </insert>
+
+    <select id="findByInviteeUserId" resultMap="userInviteMapper">
+        SELECT `id`, `inviterUserId`, `inviteeUserId`, `bindAt`, `isQualified`, `qualifiedAt`, `createdAt`, `updatedAt`
+        FROM `UserInvites`
+        WHERE `inviteeUserId` = #{inviteeUserId}
+        LIMIT 1
+    </select>
+
+    <select id="listByInviterUserId" resultMap="userInviteMapper">
+        SELECT `id`, `inviterUserId`, `inviteeUserId`, `bindAt`, `isQualified`, `qualifiedAt`, `createdAt`, `updatedAt`
+        FROM `UserInvites`
+        WHERE `inviterUserId` = #{inviterUserId}
+        ORDER BY `bindAt` DESC, `id` DESC
+    </select>
+
+    <update id="markQualified">
+        UPDATE `UserInvites`
+        SET `isQualified` = 1,
+            `qualifiedAt` = CURRENT_TIMESTAMP,
+            `updatedAt` = CURRENT_TIMESTAMP
+        WHERE `inviteeUserId` = #{inviteeUserId}
+          AND `isQualified` = 0
+    </update>
+
+</mapper>
