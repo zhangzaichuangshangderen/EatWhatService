@@ -2,6 +2,9 @@ package com.tencent.wxcloudrun.service.impl;
 
 import com.tencent.wxcloudrun.dao.UserInvitesMapper;
 import com.tencent.wxcloudrun.dao.UsersMapper;
+import com.tencent.wxcloudrun.dto.InviteLeaderboardItem;
+import com.tencent.wxcloudrun.dto.InviteLeaderboardResponse;
+import com.tencent.wxcloudrun.dto.InviteLeaderboardRow;
 import com.tencent.wxcloudrun.dto.InviteProgressItem;
 import com.tencent.wxcloudrun.dto.InviteProgressResponse;
 import com.tencent.wxcloudrun.model.UserInvite;
@@ -17,6 +20,8 @@ import java.util.List;
 @Service
 public class InviteServiceImpl implements InviteService {
   private static final int REWARD_TARGET = 20;
+  private static final int REWARD_LIMIT = 50;
+  private static final int MAX_LEADERBOARD_LIMIT = 200;
 
   private final UserInvitesMapper userInvitesMapper;
   private final UsersMapper usersMapper;
@@ -87,6 +92,32 @@ public class InviteServiceImpl implements InviteService {
     response.setQualifiedCount(qualifiedCount);
     response.setTargetCount(REWARD_TARGET);
     response.setItems(items);
+    return response;
+  }
+
+  @Override
+  public InviteLeaderboardResponse getInviteLeaderboard(int limit) {
+    int safeLimit = limit <= 0 ? REWARD_LIMIT : Math.min(limit, MAX_LEADERBOARD_LIMIT);
+    List<InviteLeaderboardRow> rows = userInvitesMapper.listLeaderboardRows(REWARD_TARGET, REWARD_TARGET - 1, safeLimit);
+    List<InviteLeaderboardItem> items = new ArrayList<InviteLeaderboardItem>(rows.size());
+    for (int i = 0; i < rows.size(); i++) {
+      InviteLeaderboardRow row = rows.get(i);
+      InviteLeaderboardItem item = new InviteLeaderboardItem();
+      item.setRank(i + 1);
+      item.setInviterUserId(row.getInviterUserId());
+      item.setInvitedCount(row.getInvitedCount());
+      item.setCompletedAt(row.getCompletedAt());
+      UserProfile inviterProfile = usersMapper.findByUserId(row.getInviterUserId());
+      if (inviterProfile != null) {
+        item.setInviterNickName(inviterProfile.getNickName());
+        item.setInviterAvatarUrl(inviterProfile.getAvatarUrl());
+      }
+      items.add(item);
+    }
+    InviteLeaderboardResponse response = new InviteLeaderboardResponse();
+    response.setTargetCount(REWARD_TARGET);
+    response.setRewardLimit(REWARD_LIMIT);
+    response.setList(items);
     return response;
   }
 }

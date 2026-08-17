@@ -178,6 +178,64 @@
 - `goalType`：`maintain`、`lose` 或 `gain`。
 - `source=calculator` 时必须同时提供 `bmrKcal` 与 `tdeeKcal`；手动目标可为空。
 
+### 邀请活动
+
+#### `POST /api/invites/bind`
+
+绑定邀请关系，请求体：
+
+```json
+{
+  "inviterUserId": "邀请人 userId"
+}
+```
+
+说明：
+- 被邀请人身份由服务端 openid 识别，客户端不能提交被邀请人 `userId`。
+- 同一被邀请人只允许绑定一次邀请关系，且不能绑定自己。
+
+#### `GET /api/invites/progress`
+
+查询当前用户邀请进度，当前活动门槛为邀请 `20` 人。响应示例：
+
+```json
+{
+  "code": 0,
+  "errorMsg": "",
+  "data": {
+    "totalInvited": 6,
+    "qualifiedCount": 3,
+    "targetCount": 20,
+    "items": []
+  }
+}
+```
+
+#### `GET /api/invites/leaderboard?limit=50`
+
+查询邀请榜单，按“最早完成邀请 20 人”排序，默认返回前 50 名。响应示例：
+
+```json
+{
+  "code": 0,
+  "errorMsg": "",
+  "data": {
+    "targetCount": 20,
+    "rewardLimit": 50,
+    "list": [
+      {
+        "rank": 1,
+        "inviterUserId": "openid_xxx",
+        "inviterNickName": "认真吃饭",
+        "inviterAvatarUrl": "https://...",
+        "invitedCount": 21,
+        "completedAt": "2026-08-17T09:12:00"
+      }
+    ]
+  }
+}
+```
+
 ### 用户档案（昵称/头像）
 
 #### `GET /api/users/me`

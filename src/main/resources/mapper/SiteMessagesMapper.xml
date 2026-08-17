@@ -41,6 +41,14 @@
           AND `userId` = #{userId}
     </update>
 
+    <update id="markAllRead">
+        UPDATE `SiteMessages`
+        SET `isRead` = 1,
+            `updatedAt` = CURRENT_TIMESTAMP
+        WHERE `userId` = #{userId}
+          AND `isRead` = 0
+    </update>
+
     <select id="countUnread" resultType="int">
         SELECT COUNT(1)
         FROM `SiteMessages`

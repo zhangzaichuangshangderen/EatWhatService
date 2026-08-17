@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
@@ -46,5 +47,16 @@ public class InviteController {
       return ApiResponse.error("未登录，请从小程序访问");
     }
     return ApiResponse.ok(inviteService.getInviteProgress(userId.get()));
+  }
+
+  @GetMapping(value = "/api/invites/leaderboard")
+  ApiResponse leaderboard(@RequestParam(value = "limit", required = false) Integer limit,
+                          HttpServletRequest httpRequest) {
+    Optional<String> userId = WxUserContext.resolveOpenId(httpRequest);
+    if (!userId.isPresent()) {
+      return ApiResponse.error("未登录，请从小程序访问");
+    }
+    int safeLimit = limit == null ? 50 : limit.intValue();
+    return ApiResponse.ok(inviteService.getInviteLeaderboard(safeLimit));
   }
 }

@@ -16,6 +16,8 @@ public interface SiteMessagesMapper {
 
   int markRead(@Param("id") Long id, @Param("userId") String userId);
 
+  int markAllRead(@Param("userId") String userId);
+
   int countUnread(@Param("userId") String userId);
 
   int countByUserAndType(@Param("userId") String userId, @Param("type") String type);

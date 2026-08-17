@@ -11,5 +11,7 @@ public interface SiteMessageService {
 
   boolean markRead(String userId, Long messageId);
 
+  int markAllRead(String userId);
+
   void ensureWelcomeMessage(String userId);
 }

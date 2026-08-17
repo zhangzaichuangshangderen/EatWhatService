@@ -32,6 +32,30 @@
         ORDER BY `bindAt` DESC, `id` DESC
     </select>
 
+    <select id="listLeaderboardRows" resultType="com.tencent.wxcloudrun.dto.InviteLeaderboardRow">
+        SELECT
+            ranked.`inviterUserId` AS `inviterUserId`,
+            ranked.`invitedCount` AS `invitedCount`,
+            ranked.`completedAt` AS `completedAt`
+        FROM (
+            SELECT
+                ui.`inviterUserId` AS `inviterUserId`,
+                COUNT(1) AS `invitedCount`,
+                (
+                    SELECT ui2.`bindAt`
+                    FROM `UserInvites` ui2
+                    WHERE ui2.`inviterUserId` = ui.`inviterUserId`
+                    ORDER BY ui2.`bindAt` ASC, ui2.`id` ASC
+                    LIMIT #{completeIndex}, 1
+                ) AS `completedAt`
+            FROM `UserInvites` ui
+            GROUP BY ui.`inviterUserId`
+            HAVING COUNT(1) >= #{targetCount}
+        ) ranked
+        ORDER BY ranked.`completedAt` ASC, ranked.`inviterUserId` ASC
+        LIMIT #{limit}
+    </select>
+
     <update id="markQualified">
         UPDATE `UserInvites`
         SET `isQualified` = 1,

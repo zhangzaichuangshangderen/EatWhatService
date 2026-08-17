@@ -40,6 +40,14 @@ public class SiteMessageServiceImpl implements SiteMessageService {
   }
 
   @Override
+  public int markAllRead(String userId) {
+    if (userId == null || userId.trim().isEmpty()) {
+      return 0;
+    }
+    return siteMessagesMapper.markAllRead(userId.trim());
+  }
+
+  @Override
   public void ensureWelcomeMessage(String userId) {
     int count = siteMessagesMapper.countByUserAndType(userId, WELCOME_MESSAGE_TYPE);
     if (count > 0) {

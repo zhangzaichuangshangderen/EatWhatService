@@ -49,4 +49,16 @@ public class SiteMessageController {
     }
     return ApiResponse.ok();
   }
+
+  @PutMapping(value = "/api/messages/read-all")
+  ApiResponse markAllRead(HttpServletRequest httpRequest) {
+    Optional<String> userId = WxUserContext.resolveOpenId(httpRequest);
+    if (!userId.isPresent()) {
+      return ApiResponse.error("未登录，请从小程序访问");
+    }
+    Map<String, Object> data = new HashMap<String, Object>();
+    data.put("updatedCount", siteMessageService.markAllRead(userId.get()));
+    data.put("unreadCount", 0);
+    return ApiResponse.ok(data);
+  }
 }
