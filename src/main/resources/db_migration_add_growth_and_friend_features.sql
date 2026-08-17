@@ -27,7 +27,6 @@ CREATE TABLE IF NOT EXISTS `UserInvites` (
   KEY `idx_inviterUserId_qualifiedAt` (`inviterUserId`, `isQualified`, `qualifiedAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-
 CREATE TABLE IF NOT EXISTS `Friends` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `requesterUserId` varchar(64) NOT NULL COMMENT '好友申请发起人 openid',
