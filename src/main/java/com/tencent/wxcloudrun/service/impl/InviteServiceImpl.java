@@ -5,6 +5,7 @@ import com.tencent.wxcloudrun.dao.UsersMapper;
 import com.tencent.wxcloudrun.dto.InviteLeaderboardItem;
 import com.tencent.wxcloudrun.dto.InviteLeaderboardResponse;
 import com.tencent.wxcloudrun.dto.InviteLeaderboardRow;
+import com.tencent.wxcloudrun.dto.InviteCleanupResponse;
 import com.tencent.wxcloudrun.dto.InviteProgressItem;
 import com.tencent.wxcloudrun.dto.InviteProgressResponse;
 import com.tencent.wxcloudrun.model.UserInvite;
@@ -22,6 +23,7 @@ public class InviteServiceImpl implements InviteService {
   private static final int REWARD_TARGET = 20;
   private static final int REWARD_LIMIT = 50;
   private static final int MAX_LEADERBOARD_LIMIT = 200;
+  private static final int OPEN_ID_MIN_LENGTH = 24;
 
   private final UserInvitesMapper userInvitesMapper;
   private final UsersMapper usersMapper;
@@ -75,7 +77,7 @@ public class InviteServiceImpl implements InviteService {
       item.setInviteeUserId(invite.getInviteeUserId());
       UserProfile inviteeProfile = usersMapper.findByUserId(invite.getInviteeUserId());
       if (inviteeProfile != null) {
-        item.setInviteeNickName(inviteeProfile.getNickName());
+        item.setInviteeNickName(sanitizeInviteeNickName(inviteeProfile.getNickName(), invite.getInviteeUserId()));
         item.setInviteeAvatarUrl(inviteeProfile.getAvatarUrl());
       }
       boolean qualified = Boolean.TRUE.equals(invite.getIsQualified());
@@ -119,5 +121,77 @@ public class InviteServiceImpl implements InviteService {
     response.setRewardLimit(REWARD_LIMIT);
     response.setList(items);
     return response;
+  }
+
+  @Override
+  @Transactional
+  public InviteCleanupResponse cleanupInviteDirtyData(boolean dryRun, boolean syncQualifiedFromDietRecords) {
+    int dirtyNickNameCount = usersMapper.countDirtyInviteNickNames();
+    int cleanedNickNameCount = 0;
+    if (!dryRun && dirtyNickNameCount > 0) {
+      cleanedNickNameCount = usersMapper.cleanDirtyInviteNickNames();
+    }
+
+    int canBeQualifiedCount = 0;
+    int qualifiedSyncedCount = 0;
+    if (syncQualifiedFromDietRecords) {
+      canBeQualifiedCount = userInvitesMapper.countInvitesPendingQualifiedWithDietRecord();
+      if (!dryRun && canBeQualifiedCount > 0) {
+        qualifiedSyncedCount = userInvitesMapper.markQualifiedFromDietRecords();
+      }
+    }
+
+    InviteCleanupResponse response = new InviteCleanupResponse();
+    response.setDryRun(dryRun);
+    response.setSyncQualifiedFromDietRecords(syncQualifiedFromDietRecords);
+    response.setDirtyNickNameCount(dirtyNickNameCount);
+    response.setCleanedNickNameCount(cleanedNickNameCount);
+    response.setCanBeQualifiedCount(canBeQualifiedCount);
+    response.setQualifiedSyncedCount(qualifiedSyncedCount);
+    return response;
+  }
+
+  private String sanitizeInviteeNickName(String nickName, String inviteeUserId) {
+    if (nickName == null) {
+      return null;
+    }
+    String normalizedNickName = nickName.trim();
+    if (normalizedNickName.isEmpty()) {
+      return null;
+    }
+    if (inviteeUserId != null && normalizedNickName.equalsIgnoreCase(inviteeUserId.trim())) {
+      return null;
+    }
+    if (looksLikeOpenId(normalizedNickName)) {
+      return null;
+    }
+    return normalizedNickName;
+  }
+
+  private boolean looksLikeOpenId(String value) {
+    if (value == null) {
+      return false;
+    }
+    String normalized = value.trim();
+    if (normalized.length() < OPEN_ID_MIN_LENGTH || normalized.length() > 64) {
+      return false;
+    }
+    char first = normalized.charAt(0);
+    boolean likelyPrefix = first == 'o' || first == 'O' || first == 'u' || first == 'U';
+    if (!likelyPrefix) {
+      return false;
+    }
+    for (int i = 0; i < normalized.length(); i++) {
+      char current = normalized.charAt(i);
+      boolean digit = current >= '0' && current <= '9';
+      boolean lower = current >= 'a' && current <= 'z';
+      boolean upper = current >= 'A' && current <= 'Z';
+      boolean underscore = current == '_';
+      boolean hyphen = current == '-';
+      if (!(digit || lower || upper || underscore || hyphen)) {
+        return false;
+      }
+    }
+    return true;
   }
 }

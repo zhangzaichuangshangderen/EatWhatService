@@ -17,9 +17,11 @@ import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,6 +52,16 @@ class InviteServiceImplTest {
     inviteB.setBindAt(LocalDateTime.now().minusHours(1));
 
     when(userInvitesMapper.listByInviterUserId("inviter-1")).thenReturn(Arrays.asList(inviteA, inviteB));
+    UserProfile inviteeA = new UserProfile();
+    inviteeA.setUserId("u-a");
+    inviteeA.setNickName("u-a");
+    inviteeA.setAvatarUrl("https://a.example/avatar.png");
+    when(usersMapper.findByUserId("u-a")).thenReturn(inviteeA);
+    UserProfile inviteeB = new UserProfile();
+    inviteeB.setUserId("u-b");
+    inviteeB.setNickName("小李");
+    inviteeB.setAvatarUrl("https://b.example/avatar.png");
+    when(usersMapper.findByUserId("u-b")).thenReturn(inviteeB);
 
     InviteProgressResponse response = service.getInviteProgress("inviter-1");
 
@@ -57,6 +69,8 @@ class InviteServiceImplTest {
     assertEquals(2, response.getTotalInvited());
     assertEquals(1, response.getQualifiedCount());
     assertEquals(2, response.getItems().size());
+    assertNull(response.getItems().get(0).getInviteeNickName());
+    assertEquals("小李", response.getItems().get(1).getInviteeNickName());
   }
 
   @Test
@@ -101,5 +115,58 @@ class InviteServiceImplTest {
     ArgumentCaptor<Integer> cap = ArgumentCaptor.forClass(Integer.class);
     verify(userInvitesMapper).listLeaderboardRows(eq(20), eq(19), cap.capture());
     assertEquals(50, cap.getValue().intValue());
+  }
+
+  @Test
+  void cleanupDryRunReturnsCountsWithoutMutatingData() {
+    when(usersMapper.countDirtyInviteNickNames()).thenReturn(3);
+    when(userInvitesMapper.countInvitesPendingQualifiedWithDietRecord()).thenReturn(2);
+
+    com.tencent.wxcloudrun.dto.InviteCleanupResponse response =
+      service.cleanupInviteDirtyData(true, true);
+
+    assertEquals(true, response.getDryRun());
+    assertEquals(true, response.getSyncQualifiedFromDietRecords());
+    assertEquals(3, response.getDirtyNickNameCount().intValue());
+    assertEquals(0, response.getCleanedNickNameCount().intValue());
+    assertEquals(2, response.getCanBeQualifiedCount().intValue());
+    assertEquals(0, response.getQualifiedSyncedCount().intValue());
+    verify(usersMapper, never()).cleanDirtyInviteNickNames();
+    verify(userInvitesMapper, never()).markQualifiedFromDietRecords();
+  }
+
+  @Test
+  void cleanupExecuteAppliesNicknameAndQualifiedUpdates() {
+    when(usersMapper.countDirtyInviteNickNames()).thenReturn(4);
+    when(usersMapper.cleanDirtyInviteNickNames()).thenReturn(4);
+    when(userInvitesMapper.countInvitesPendingQualifiedWithDietRecord()).thenReturn(3);
+    when(userInvitesMapper.markQualifiedFromDietRecords()).thenReturn(3);
+
+    com.tencent.wxcloudrun.dto.InviteCleanupResponse response =
+      service.cleanupInviteDirtyData(false, true);
+
+    assertEquals(false, response.getDryRun());
+    assertEquals(true, response.getSyncQualifiedFromDietRecords());
+    assertEquals(4, response.getDirtyNickNameCount().intValue());
+    assertEquals(4, response.getCleanedNickNameCount().intValue());
+    assertEquals(3, response.getCanBeQualifiedCount().intValue());
+    assertEquals(3, response.getQualifiedSyncedCount().intValue());
+    verify(usersMapper).cleanDirtyInviteNickNames();
+    verify(userInvitesMapper).markQualifiedFromDietRecords();
+  }
+
+  @Test
+  void cleanupCanSkipQualifiedSync() {
+    when(usersMapper.countDirtyInviteNickNames()).thenReturn(1);
+    when(usersMapper.cleanDirtyInviteNickNames()).thenReturn(1);
+
+    com.tencent.wxcloudrun.dto.InviteCleanupResponse response =
+      service.cleanupInviteDirtyData(false, false);
+
+    assertEquals(false, response.getSyncQualifiedFromDietRecords());
+    assertEquals(0, response.getCanBeQualifiedCount().intValue());
+    assertEquals(0, response.getQualifiedSyncedCount().intValue());
+    verify(userInvitesMapper, never()).countInvitesPendingQualifiedWithDietRecord();
+    verify(userInvitesMapper, never()).markQualifiedFromDietRecords();
   }
 }

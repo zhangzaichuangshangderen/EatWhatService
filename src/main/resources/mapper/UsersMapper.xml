@@ -37,4 +37,33 @@
         WHERE `userId` = #{userId}
     </update>
 
+    <select id="countDirtyInviteNickNames" resultType="int">
+        SELECT COUNT(1)
+        FROM `Users`
+        WHERE `nickName` IS NOT NULL
+          AND TRIM(`nickName`) &lt;&gt; ''
+          AND (
+            LOWER(TRIM(`nickName`)) = LOWER(TRIM(`userId`))
+            OR (
+              LENGTH(TRIM(`nickName`)) BETWEEN 24 AND 64
+              AND TRIM(`nickName`) REGEXP '^[oOuU][A-Za-z0-9_-]{23,63}$'
+            )
+          )
+    </select>
+
+    <update id="cleanDirtyInviteNickNames">
+        UPDATE `Users`
+        SET `nickName` = NULL,
+            `updatedAt` = CURRENT_TIMESTAMP
+        WHERE `nickName` IS NOT NULL
+          AND TRIM(`nickName`) &lt;&gt; ''
+          AND (
+            LOWER(TRIM(`nickName`)) = LOWER(TRIM(`userId`))
+            OR (
+              LENGTH(TRIM(`nickName`)) BETWEEN 24 AND 64
+              AND TRIM(`nickName`) REGEXP '^[oOuU][A-Za-z0-9_-]{23,63}$'
+            )
+          )
+    </update>
+
 </mapper>

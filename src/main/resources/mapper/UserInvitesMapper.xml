@@ -65,4 +65,29 @@
           AND `isQualified` = 0
     </update>
 
+    <select id="countInvitesPendingQualifiedWithDietRecord" resultType="int">
+        SELECT COUNT(1)
+        FROM `UserInvites` ui
+        WHERE ui.`isQualified` = 0
+          AND EXISTS (
+            SELECT 1
+            FROM `DietRecords` dr
+            WHERE dr.`userId` = ui.`inviteeUserId`
+            LIMIT 1
+          )
+    </select>
+
+    <update id="markQualifiedFromDietRecords">
+        UPDATE `UserInvites` ui
+        JOIN (
+            SELECT DISTINCT `userId`
+            FROM `DietRecords`
+        ) dr
+          ON dr.`userId` = ui.`inviteeUserId`
+        SET ui.`isQualified` = 1,
+            ui.`qualifiedAt` = COALESCE(ui.`qualifiedAt`, CURRENT_TIMESTAMP),
+            ui.`updatedAt` = CURRENT_TIMESTAMP
+        WHERE ui.`isQualified` = 0
+    </update>
+
 </mapper>

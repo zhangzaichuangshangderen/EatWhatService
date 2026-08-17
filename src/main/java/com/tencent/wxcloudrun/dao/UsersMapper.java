@@ -12,4 +12,8 @@ public interface UsersMapper {
   int insertIgnore(@Param("userId") String userId);
 
   int updateProfile(UserProfile profile);
+
+  int countDirtyInviteNickNames();
+
+  int cleanDirtyInviteNickNames();
 }

@@ -20,4 +20,8 @@ public interface UserInvitesMapper {
                                                  @Param("limit") int limit);
 
   int markQualified(@Param("inviteeUserId") String inviteeUserId);
+
+  int countInvitesPendingQualifiedWithDietRecord();
+
+  int markQualifiedFromDietRecords();
 }

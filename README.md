@@ -236,6 +236,42 @@
 }
 ```
 
+#### `POST /api/invites/cleanup-dirty`
+
+清洗邀请活动脏数据（仅限白名单管理员调用）。请求体示例：
+
+```json
+{
+  "dryRun": true,
+  "syncQualifiedFromDietRecords": true
+}
+```
+
+字段说明：
+- `dryRun`：`true` 时仅返回预计影响条数，不执行更新；`false` 时执行清洗。默认 `true`。
+- `syncQualifiedFromDietRecords`：是否按“DietRecords 至少一条记录”回填 `UserInvites.isQualified`。默认 `true`。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "errorMsg": "",
+  "data": {
+    "dryRun": true,
+    "syncQualifiedFromDietRecords": true,
+    "dirtyNickNameCount": 12,
+    "cleanedNickNameCount": 0,
+    "canBeQualifiedCount": 3,
+    "qualifiedSyncedCount": 0
+  }
+}
+```
+
+鉴权说明：
+- 仅 `INVITE_CLEANUP_ADMIN_OPENIDS` 环境变量中配置的 openid 可调用（逗号分隔）。
+- 未登录或不在白名单时返回无权限错误。
+
 ### 用户档案（昵称/头像）
 
 #### `GET /api/users/me`
@@ -259,6 +295,7 @@
 - MYSQL_PASSWORD
 - MYSQL_USERNAME
 - MYSQL_DATABASE（可选，默认 `eatwhat`）
+- INVITE_CLEANUP_ADMIN_OPENIDS（可选，邀请脏数据清洗接口白名单，逗号分隔 openid）
 以上变量的值请按实际情况填写。如果使用云托管内 MySQL，可以在控制台 MySQL 页面获取相关信息。
 
 ## 数据库升级（已有环境）
