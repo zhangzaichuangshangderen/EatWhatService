@@ -3,10 +3,9 @@
 #   1) cp .env.example .env  并填好密码与微信小程序配置
 #   2) docker compose up -d
 #
-# 端口说明：
-#   - app 容器内监听 8080（由 SERVER_PORT 控制），本机映射到 8080；
-#   - 生产环境请在前端用 Nginx/Caddy 做 HTTPS 反代（见 nginx/nginx.conf 示例），
-#     将 443 -> 127.0.0.1:8080，小程序通过 https://你的域名/api/... 访问。
+# 架构：
+#   公网 80/443 -> 宿主机 Caddy -> 127.0.0.1:8080 -> app:8080
+#   本文件只管理 app；MySQL 由 docker-compose.mysql.yml 单独管理。
 
 services:
   app:
@@ -27,32 +26,19 @@ services:
       # JWT 登录态（务必改成随机强密钥，且各实例一致）
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-720}
+    # 仅供宿主机 Caddy 访问，不暴露到公网网卡。
     ports:
-      - "8080:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-
-  mysql:
-    image: mysql:8.0
-    container_name: eatwhat-mysql
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: eatwhat
-      MYSQL_USER: eatwhat
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      # 首次启动自动建库建表（db.sql 内含 CREATE DATABASE + 各表）
-      - ./src/main/resources/db.sql:/docker-entrypoint-initdb.d/01-db.sql:ro
+      - "127.0.0.1:8080:8080"
+    networks:
+      - backend
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
-volumes:
-  mysql_data:
+networks:
+  backend:
+    name: eatwhat-backend
+    external: true

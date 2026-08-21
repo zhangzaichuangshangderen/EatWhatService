@@ -1,0 +1,37 @@
+# EatWhatService MySQL 独立编排
+# 首次或数据库配置变更时执行：docker compose -f docker-compose.mysql.yml up -d --wait
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: eatwhat-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: eatwhat
+      MYSQL_USER: eatwhat
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      # 仅宿主机本地维护可连，不绑定公网网卡。
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 仅在空数据卷首次初始化时自动执行。
+      - ./src/main/resources/db.sql:/docker-entrypoint-initdb.d/01-db.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+
+volumes:
+  mysql_data:
+    # 沿用拆分前默认生成的数据卷，避免创建空数据库。
+    name: eatwhatservice_mysql_data
+
+networks:
+  backend:
+    name: eatwhat-backend

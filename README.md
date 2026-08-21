@@ -320,11 +320,68 @@
 
 ## 部署到自建云服务
 
-1. `cp .env.example .env` 并填好数据库、微信小程序与 JWT 配置。
-2. `docker compose up -d` 启动 `app`（Spring Boot）+ `mysql` 两个容器，app 监听本机 `8080`。
-3. 用已有的域名 + 证书，在服务器上配置 Nginx 反代（示例见 `nginx/nginx.conf`），将
-   `443 -> 127.0.0.1:8080`，小程序通过 `https://你的域名/api/...` 访问。
-4. 微信公众平台「开发管理 - 开发设置」中，将服务器域名 `request 合法域名` 加入你的 HTTPS 域名。
+部署拓扑为 `公网 80/443 -> 宿主机 Caddy -> 127.0.0.1:8080 -> app -> MySQL`。app 与
+MySQL 分别由 `docker-compose.yml`、`docker-compose.mysql.yml` 管理，通过共享网络
+`eatwhat-backend` 通信；Caddy 作为宿主机 systemd 服务独立管理 HTTPS 和证书。
+
+1. 确认 `fitfit.cn` 和 `www.fitfit.cn` 的 A 记录指向服务器，并在云安全组放行 TCP 80/443。
+   已有数据库的服务器在首次拆分前先执行 `docker volume inspect eatwhatservice_mysql_data`；如果找不到，
+   用 `docker volume ls` 查出原卷名，并同步修改 `docker-compose.mysql.yml` 中的 `volumes.mysql_data.name`，
+   不要在未确认数据卷时初始化生产数据库。
+2. 准备环境变量并启动服务：
+
+   ```bash
+   cd /root/code/EatWhatService
+   cp .env.example .env
+   vi .env
+   docker compose -f docker-compose.mysql.yml config -q
+   docker compose -f docker-compose.mysql.yml up -d --wait
+   docker compose config -q
+   docker compose up -d --build app
+   curl -I http://127.0.0.1:8080/
+   ```
+
+   MySQL 编排会创建共享网络，并沿用拆分前的 `eatwhatservice_mysql_data` 数据卷。app 只绑定
+   宿主机 `127.0.0.1:8080`，公网不能直接访问 8080。
+3. 按 [Caddy 官方安装文档](https://caddyserver.com/docs/install)安装对应 Linux 发行版的软件包。
+   官方软件包会把 Caddy 安装为独立的 systemd 服务。
+4. 将宿主机 `/etc/caddy/Caddyfile` 设置为：
+
+   ```caddyfile
+   fitfit.cn, www.fitfit.cn {
+       reverse_proxy 127.0.0.1:8080
+   }
+   ```
+
+5. 校验并加载配置：
+
+   ```bash
+   sudo caddy validate --config /etc/caddy/Caddyfile
+   sudo systemctl reload caddy
+   sudo systemctl status caddy --no-pager
+   curl -I http://fitfit.cn
+   curl -I https://fitfit.cn
+   curl -I https://www.fitfit.cn
+   ```
+
+   Caddy 会自动申请并续期公开可信证书，同时把 HTTP 请求重定向到 HTTPS。若证书签发失败，检查
+   DNS、服务器时间、80/443 端口和云安全组。最后在微信公众平台将 `https://fitfit.cn` 加入
+   `request 合法域名`。
+
+两套 Compose 可以独立运维：
+
+```bash
+# 仅查看/更新 MySQL
+docker compose -f docker-compose.mysql.yml ps
+docker compose -f docker-compose.mysql.yml logs -f mysql
+docker compose -f docker-compose.mysql.yml up -d --wait
+
+# 仅构建/更新 Java app
+docker compose build app
+docker compose up -d app
+```
+
+不要对 MySQL 编排执行 `down -v`，否则会删除数据库数据卷。
 
 ## 用户登录流程（迁移核心）
 
@@ -348,7 +405,8 @@
 
 ## CI/CD 自动部署（GitHub Actions）
 
-推送 `master` 后由 GitHub Actions 通过 SSH 登录服务器，自动拉取最新代码并重建 `app` 容器。数据库 `mysql` 走命名卷，数据不受影响。
+推送 `master` 后由 GitHub Actions 通过 SSH 登录服务器，只重新构建和更新 app。宿主机 Caddy
+和 MySQL 编排都不会参与 app 的构建；数据库使用独立 Compose 和命名卷。
 
 ### 工作流位置
 `.github/workflows/deploy.yml`（push 到 `master` 触发，也可在 Actions 页面手动触发）。
@@ -361,15 +419,18 @@ ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N ""
 cat ~/.ssh/github_deploy.pub   # 复制内容到 GitHub Deploy keys
 
 # 2) clone 仓库到部署目录（与 deploy.yml 的 DEPLOY_PATH 保持一致）
-git clone git@github.com:zhangzaichuangshangderen/EatWhatService.git /opt/EatWhatService
-cd /opt/EatWhatService
+git clone git@github.com:zhangzaichuangshangderen/EatWhatService.git /root/code/EatWhatService
+cd /root/code/EatWhatService
 
 # 3) 准备本地 .env（含数据库密码、WX_*/JWT_*，切勿提交）
 cp .env.example .env
-vi .env     # 填好 MYSQL_PASSWORD / MYSQL_ROOT_PASSWORD / WX_SECRET / JWT_SECRET 等
+vi .env
 
-# 4) 首次启动
-docker compose up -d
+# 4) 先启动独立 MySQL，再启动 app；按上文在宿主机配置 Caddy HTTPS
+docker compose -f docker-compose.mysql.yml config -q
+docker compose -f docker-compose.mysql.yml up -d --wait
+docker compose config -q
+docker compose up -d --build app
 ```
 
 ### GitHub 仓库 Secrets（Settings → Secrets and variables → Actions）
@@ -387,7 +448,7 @@ docker compose up -d
 推送后到仓库 **Actions** 页看运行日志；或直接：
 ```bash
 ssh root@146.56.250.103 \
-  'cd /opt/EatWhatService && docker compose ps && docker compose logs --tail=20 app'
+  'cd /root/code/EatWhatService && docker compose -f docker-compose.mysql.yml ps && docker compose ps && docker compose logs --tail=20 app && systemctl is-active caddy'
 ```
 
 ## License
