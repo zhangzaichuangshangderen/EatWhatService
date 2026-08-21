@@ -1,5 +1,7 @@
 package com.tencent.wxcloudrun.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -7,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Map;
@@ -23,6 +27,7 @@ import javax.crypto.spec.SecretKeySpec;
 public class WxAuthService {
 
   private final RestTemplate restTemplate = new RestTemplate();
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Value("${wx.appid:}")
   private String appid;
@@ -38,31 +43,52 @@ public class WxAuthService {
 
   /**
    * 用小程序 wx.login 返回的 code 调用微信 code2session 换取 openid。
+   * 微信对 code2session 的错误响应（invalid appsecret / invalid code 等）使用
+   * Content-Type: text/plain 返回（body 仍是 JSON），不能直接解析成 Map，
+   * 需先取原始字符串再手动解析，才能拿到真实的 errcode/errmsg。
    */
   public String code2Session(String code) {
     if (appid.isEmpty() || secret.isEmpty()) {
       throw new IllegalStateException("微信小程序 appid/secret 尚未配置");
     }
-    String url = "https://api.weixin.qq.com/sns/jscode2session?appid=" + appid
-      + "&secret=" + secret + "&js_code=" + code + "&grant_type=authorization_code";
-    Map<String, Object> resp;
+    String url = "https://api.weixin.qq.com/sns/jscode2session?appid=" + urlEncode(appid)
+      + "&secret=" + urlEncode(secret) + "&js_code=" + urlEncode(code)
+      + "&grant_type=authorization_code";
+    String body;
     try {
-      resp = restTemplate.getForObject(url, Map.class);
+      body = restTemplate.getForObject(url, String.class);
     } catch (Exception e) {
       throw new RuntimeException("调用微信 code2session 失败: " + e.getMessage(), e);
     }
-    if (resp == null) {
-      throw new RuntimeException("微信 code2session 返回为空");
-    }
+    Map<String, Object> resp = parseJson(body);
     Object errcode = resp.get("errcode");
     if (errcode instanceof Number && ((Number) errcode).intValue() != 0) {
       throw new RuntimeException("微信 code2session 错误: " + resp.get("errmsg"));
     }
     String openid = (String) resp.get("openid");
     if (openid == null || openid.isEmpty()) {
-      throw new RuntimeException("微信 code2session 未返回 openid");
+      throw new RuntimeException("微信 code2session 未返回 openid，原始响应: " + body);
     }
     return openid;
+  }
+
+  private String urlEncode(String value) {
+    try {
+      return URLEncoder.encode(value, StandardCharsets.UTF_8.name());
+    } catch (UnsupportedEncodingException e) {
+      throw new IllegalStateException("URL 编码失败", e);
+    }
+  }
+
+  private Map<String, Object> parseJson(String body) {
+    if (body == null || body.isEmpty()) {
+      throw new RuntimeException("微信 code2session 返回为空");
+    }
+    try {
+      return objectMapper.readValue(body, new TypeReference<Map<String, Object>>() {});
+    } catch (Exception e) {
+      throw new RuntimeException("微信 code2session 返回非 JSON 内容: " + body, e);
+    }
   }
 
   /**
