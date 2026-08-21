@@ -41,7 +41,7 @@
 
 ## 服务 API 文档
 
-所有业务接口均由微信云托管注入的 `X-WX-OPENID` 识别用户；客户端不得提交或覆盖 `userId`。
+所有业务接口均按用户隔离：用户身份来自登录 token 解析出的 `openid`（过渡期仍兼容云托管注入的 `X-WX-OPENID`）；客户端不得提交或覆盖 `userId`。
 
 ### 食材目录
 
@@ -318,15 +318,77 @@
 
 迁移脚本不会自动执行，也不要直接在生产库试跑；应先备份并在隔离库验证。若 `fiber` 或 `approxUnit` 已由其他变更添加，请跳过脚本中对应的 `ALTER TABLE`。
 
+## 部署到自建云服务
+
+1. `cp .env.example .env` 并填好数据库、微信小程序与 JWT 配置。
+2. `docker compose up -d` 启动 `app`（Spring Boot）+ `mysql` 两个容器，app 监听本机 `8080`。
+3. 用已有的域名 + 证书，在服务器上配置 Nginx 反代（示例见 `nginx/nginx.conf`），将
+   `443 -> 127.0.0.1:8080`，小程序通过 `https://你的域名/api/...` 访问。
+4. 微信公众平台「开发管理 - 开发设置」中，将服务器域名 `request 合法域名` 加入你的 HTTPS 域名。
+
+## 用户登录流程（迁移核心）
+
+离开云托管后，微信不再自动注入 `openid`，改为标准的小程序登录态：
+
+1. 小程序调用 `wx.login()` 获取 `code`；
+2. `POST /api/auth/login`，请求体 `{"code":"<code>"}`；
+3. 后端用 `code` 调微信 `code2session` 换 `openid`，签发 **JWT** 返回 `{"token":"...","openid":"..."}`；
+4. 小程序把 `token` 存入本地存储，后续请求在请求头携带 `Authorization: Bearer <token>`；
+5. 后端 `AuthInterceptor` 统一校验 token，把 `openid` 注入请求，业务控制器无需改动。
+
+> 过渡期仍兼容云托管注入的 `X-WX-OPENID` 请求头，便于灰度双跑。
+
 ## 关联前端仓库与联调
 
 - 前端仓库路径：`/Users/lemon.wu/Code/wechat/EatWhat`
-- 小程序通过 `wx.cloud.callContainer` 访问本服务 `/api/foods`、`/api/ingredients`、`/api/diet-records` 和 `/api/nutrition-goal`，微信会自动注入用户 openid。
-- 前端需在 `app.ts` 配置云环境与服务名（存储键）：
-  - `EATWHAT_CLOUD_ENV`：云环境 ID（云托管控制台获取）
-  - `EATWHAT_CLOUD_SERVICE`：云托管服务名（如 `springboot-kq61`）
-- 参考文档：[云托管小程序登录流程优化](https://developers.weixin.qq.com/miniprogram/dev/wxcloudservice/wxcloudrun/src/quickstart/plan/login.html)
+- 小程序**不再**使用 `wx.cloud.callContainer`，改为直接用 `wx.request` 访问 `https://你的域名/api/...`，并在请求头带上登录 token。
+- 前端需新增登录逻辑：启动时 `wx.login()` → `/api/auth/login` 换取并缓存 token；所有 `/api/*` 请求附加 `Authorization: Bearer <token>`。
+- 用户身份来源由云托管头注入改为 token 解析，其余接口地址与返回结构保持不变。
 
+
+## CI/CD 自动部署（GitHub Actions）
+
+推送 `master` 后由 GitHub Actions 通过 SSH 登录服务器，自动拉取最新代码并重建 `app` 容器。数据库 `mysql` 走命名卷，数据不受影响。
+
+### 工作流位置
+`.github/workflows/deploy.yml`（push 到 `master` 触发，也可在 Actions 页面手动触发）。
+
+### 服务器一次性准备
+```bash
+# 1) 在服务器生成“部署密钥”，公钥加到 GitHub 仓库 Settings → Deploy keys（只读），
+#    用于服务器后续 git pull
+ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N ""
+cat ~/.ssh/github_deploy.pub   # 复制内容到 GitHub Deploy keys
+
+# 2) clone 仓库到部署目录（与 deploy.yml 的 DEPLOY_PATH 保持一致）
+git clone git@github.com:zhangzaichuangshangderen/EatWhatService.git /opt/EatWhatService
+cd /opt/EatWhatService
+
+# 3) 准备本地 .env（含数据库密码、WX_*/JWT_*，切勿提交）
+cp .env.example .env
+vi .env     # 填好 MYSQL_PASSWORD / MYSQL_ROOT_PASSWORD / WX_SECRET / JWT_SECRET 等
+
+# 4) 首次启动
+docker compose up -d
+```
+
+### GitHub 仓库 Secrets（Settings → Secrets and variables → Actions）
+| Secret | 说明 |
+| --- | --- |
+| `SERVER_HOST` | 服务器公网 IP（如 `146.56.250.103`） |
+| `SERVER_USERNAME` | SSH 登录用户名（如 `root`） |
+| `SERVER_SSH_KEY` | **你本地机器的 SSH 私钥内容**（用于 Actions runner 登录服务器；对应公钥需加入服务器 `~/.ssh/authorized_keys`） |
+
+> 注意区分两把密钥：
+> - `SERVER_SSH_KEY`：GitHub Actions **连服务器**用（私钥在本地，公钥在服务器 `authorized_keys`）。
+> - 服务器上的 `github_deploy` 密钥：服务器 **git pull GitHub** 用（公钥在 GitHub Deploy keys）。
+
+### 验证
+推送后到仓库 **Actions** 页看运行日志；或直接：
+```bash
+ssh root@146.56.250.103 \
+  'cd /opt/EatWhatService && docker compose ps && docker compose logs --tail=20 app'
+```
 
 ## License
 
