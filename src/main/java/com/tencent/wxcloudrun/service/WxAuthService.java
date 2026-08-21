@@ -7,8 +7,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Map;
+
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * 微信登录与 Token 服务。
@@ -63,6 +66,15 @@ public class WxAuthService {
   }
 
   /**
+   * 统一的 HMAC 密钥（UTF-8 原始字节）。签发与校验必须使用同一个 SecretKey 对象，
+   * 以避开 jjwt 对 String/byte[] 形式密钥做 Base64 解码、而与 signWith(String) 的
+   * UTF-8 字节不一致导致校验永远失败的坑。
+   */
+  private javax.crypto.SecretKey signingKey() {
+    return new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+  }
+
+  /**
    * 为指定 openid 签发 JWT。
    */
   public String issueToken(String openid) {
@@ -72,7 +84,7 @@ public class WxAuthService {
       .setSubject(openid)
       .setIssuedAt(now)
       .setExpiration(exp)
-      .signWith(SignatureAlgorithm.HS256, jwtSecret)
+      .signWith(SignatureAlgorithm.HS256, signingKey())
       .compact();
   }
 
@@ -81,7 +93,7 @@ public class WxAuthService {
    */
   public String validateToken(String token) {
     Claims claims = Jwts.parser()
-      .setSigningKey(jwtSecret)
+      .setSigningKey(signingKey())
       .parseClaimsJws(token)
       .getBody();
     return claims.getSubject();

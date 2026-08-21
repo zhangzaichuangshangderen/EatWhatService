@@ -27,7 +27,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-720}
       # 文件上传目录（头像等），需挂载卷以在重建容器后保留
-      UPLOAD_DIR: ${UPLOAD_DIR:/data/uploads}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/data/uploads}
     # 仅供宿主机 Caddy 访问，不暴露到公网网卡。
     ports:
       - "127.0.0.1:8080:8080"
