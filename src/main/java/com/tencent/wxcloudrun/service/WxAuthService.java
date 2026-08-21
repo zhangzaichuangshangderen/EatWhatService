@@ -1,12 +1,15 @@
 package com.tencent.wxcloudrun.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.UnsupportedEncodingException;
@@ -26,8 +29,17 @@ import javax.crypto.spec.SecretKeySpec;
 @Service
 public class WxAuthService {
 
-  private final RestTemplate restTemplate = new RestTemplate();
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final RestTemplate restTemplate;
+  private final ObjectMapper objectMapper;
+
+  public WxAuthService(@Autowired ObjectMapper objectMapper) {
+    this(objectMapper, new RestTemplate());
+  }
+
+  WxAuthService(ObjectMapper objectMapper, RestTemplate restTemplate) {
+    this.objectMapper = objectMapper;
+    this.restTemplate = restTemplate;
+  }
 
   @Value("${wx.appid:}")
   private String appid;
@@ -57,8 +69,8 @@ public class WxAuthService {
     String body;
     try {
       body = restTemplate.getForObject(url, String.class);
-    } catch (Exception e) {
-      throw new RuntimeException("调用微信 code2session 失败: " + e.getMessage(), e);
+    } catch (RestClientException e) {
+      throw new RuntimeException("调用微信 code2session 失败", e);
     }
     Map<String, Object> resp = parseJson(body);
     Object errcode = resp.get("errcode");
@@ -67,7 +79,7 @@ public class WxAuthService {
     }
     String openid = (String) resp.get("openid");
     if (openid == null || openid.isEmpty()) {
-      throw new RuntimeException("微信 code2session 未返回 openid，原始响应: " + body);
+      throw new RuntimeException("微信 code2session 未返回 openid");
     }
     return openid;
   }
@@ -86,8 +98,8 @@ public class WxAuthService {
     }
     try {
       return objectMapper.readValue(body, new TypeReference<Map<String, Object>>() {});
-    } catch (Exception e) {
-      throw new RuntimeException("微信 code2session 返回非 JSON 内容: " + body, e);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException("微信 code2session 返回非 JSON 内容", e);
     }
   }
 

@@ -7,7 +7,7 @@ target/
 .idea/
 *.iml
 .vscode/
-
+.workbuddy/
 
 # ===== 操作系统 / 编辑器 =====
 .DS_Store
