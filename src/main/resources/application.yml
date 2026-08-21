@@ -1,7 +1,6 @@
 server:
-  # 容器内监听端口；自建部署时由 SERVER_PORT 覆盖（通常 8080，交给 Nginx 反代）
+  # 容器内监听端口；自建部署时由 SERVER_PORT 覆盖（通常 8080，交给 Caddy 反代）
   port: ${SERVER_PORT:80}
-
 
 spring:
   datasource:
@@ -9,10 +8,10 @@ spring:
     url: jdbc:mysql://${MYSQL_ADDRESS}/${MYSQL_DATABASE:eatwhat}
     username: ${MYSQL_USERNAME}
     password: ${MYSQL_PASSWORD}
-  mvc:
-    view:
-      suffix: .html
-      prefix: /
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
 
 mybatis:
   mapper-locations: classpath*:mapper/*Mapper.xml
@@ -27,3 +26,7 @@ jwt:
   # 必须改成随机强密钥，且所有实例保持一致
   secret: ${JWT_SECRET:change-me-in-production}
   expire-hours: ${JWT_EXPIRE_HOURS:720}
+
+# 文件上传（自建部署用，替代云托管云存储）
+upload:
+  dir: ${UPLOAD_DIR:/data/uploads}

@@ -1,24 +1,6 @@
-# wxcloudrun-springboot
-[![GitHub license](https://img.shields.io/github/license/WeixinCloud/wxcloudrun-express)](https://github.com/WeixinCloud/wxcloudrun-express)
-![GitHub package.json dependency version (prod)](https://img.shields.io/badge/maven-3.6.0-green)
-![GitHub package.json dependency version (prod)](https://img.shields.io/badge/jdk-11-green)
+# Fitfit Service
 
-微信云托管 Java Springboot 框架模版，实现简单的计数器读写接口，使用云托管 MySQL 读写、记录计数值。
-
-![](https://qcloudimg.tencent-cloud.cn/raw/be22992d297d1b9a1a5365e606276781.png)
-
-
-## 快速开始
-前往 [微信云托管快速开始页面](https://developers.weixin.qq.com/miniprogram/dev/wxcloudrun/src/basic/guide.html)，选择相应语言的模板，根据引导完成部署。
-
-## 本地调试
-下载代码在本地调试，请参考[微信云托管本地调试指南](https://developers.weixin.qq.com/miniprogram/dev/wxcloudrun/src/guide/debug/)。
-
-## 实时开发
-代码变动时，不需要重新构建和启动容器，即可查看变动后的效果。请参考[微信云托管实时开发指南](https://developers.weixin.qq.com/miniprogram/dev/wxcloudrun/src/guide/debug/dev.html)
-
-## Dockerfile最佳实践
-请参考[如何提高项目构建效率](https://developers.weixin.qq.com/miniprogram/dev/wxcloudrun/src/scene/build/speed.html)
+fitfit 认真吃饭的 Java 后端服务，提供小程序登录、食材、饮食记录、营养目标、好友和邀请等 API。
 
 ## 目录结构说明
 ~~~
@@ -26,12 +8,10 @@
 ├── Dockerfile                      Dockerfile 文件
 ├── LICENSE                         LICENSE 文件
 ├── README.md                       README 文件
-├── container.config.json           模板部署「服务设置」初始化配置（二开请忽略）
-├── mvnw                            mvnw 文件，处理mevan版本兼容问题
-├── mvnw.cmd                        mvnw.cmd 文件，处理mevan版本兼容问题
+├── docker-compose.yml              Java 应用编排
+├── docker-compose.mysql.yml        MySQL 独立编排
 ├── pom.xml                         pom.xml文件
 ├── settings.xml                    maven 配置文件
-├── springboot-cloudbaserun.iml     项目配置文件
 └── src                             源码目录
     └── main                        源码主目录
         ├── java                    业务逻辑目录
@@ -289,14 +269,15 @@
 }
 ```
 
-## 使用注意
-如果不是通过微信云托管控制台部署模板代码，而是自行复制/下载模板代码后，手动新建一个服务并部署，需要在「服务设置」中补全以下环境变量，才可正常使用，否则会引发无法连接数据库，进而导致部署失败。
+## 运行配置
+
+启动服务前需配置以下环境变量：
 - MYSQL_ADDRESS
 - MYSQL_PASSWORD
 - MYSQL_USERNAME
 - MYSQL_DATABASE（可选，默认 `eatwhat`）
 - INVITE_CLEANUP_ADMIN_OPENIDS（可选，邀请脏数据清洗接口白名单，逗号分隔 openid）
-以上变量的值请按实际情况填写。如果使用云托管内 MySQL，可以在控制台 MySQL 页面获取相关信息。
+具体配置项参考 `.env.example`，实际密码和密钥不要提交到仓库。
 
 ## 数据库升级（已有环境）
 
@@ -322,7 +303,7 @@
 
 部署拓扑为 `公网 80/443 -> 宿主机 Caddy -> 127.0.0.1:8080 -> app -> MySQL`。app 与
 MySQL 分别由 `docker-compose.yml`、`docker-compose.mysql.yml` 管理，通过共享网络
-`eatwhat-backend` 通信；Caddy 作为宿主机 systemd 服务独立管理 HTTPS 和证书。
+`eatwhat-backend` 通信；Caddy 作为独立 Docker 容器管理 HTTPS 和证书，不参与 app 构建。
 
 1. 确认 `fitfit.cn` 和 `www.fitfit.cn` 的 A 记录指向服务器，并在云安全组放行 TCP 80/443。
    已有数据库的服务器在首次拆分前先执行 `docker volume inspect eatwhatservice_mysql_data`；如果找不到，
@@ -343,9 +324,7 @@ MySQL 分别由 `docker-compose.yml`、`docker-compose.mysql.yml` 管理，通�
 
    MySQL 编排会创建共享网络，并沿用拆分前的 `eatwhatservice_mysql_data` 数据卷。app 只绑定
    宿主机 `127.0.0.1:8080`，公网不能直接访问 8080。
-3. 按 [Caddy 官方安装文档](https://caddyserver.com/docs/install)安装对应 Linux 发行版的软件包。
-   官方软件包会把 Caddy 安装为独立的 systemd 服务。
-4. 将宿主机 `/etc/caddy/Caddyfile` 设置为：
+3. 将宿主机 `/root/caddy/Caddyfile` 设置为：
 
    ```caddyfile
    fitfit.cn, www.fitfit.cn {
@@ -353,12 +332,25 @@ MySQL 分别由 `docker-compose.yml`、`docker-compose.mysql.yml` 管理，通�
    }
    ```
 
-5. 校验并加载配置：
+4. 首次启动独立 Caddy 容器：
 
    ```bash
-   sudo caddy validate --config /etc/caddy/Caddyfile
-   sudo systemctl reload caddy
-   sudo systemctl status caddy --no-pager
+   docker volume create eatwhat-caddy-data
+   docker volume create eatwhat-caddy-config
+   docker run -d --name eatwhat-caddy --restart always --network host \
+     -v /root/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \
+     -v eatwhat-caddy-data:/data \
+     -v eatwhat-caddy-config:/config \
+     caddy:2.11.4-alpine
+   ```
+
+   Caddy 使用 host network 访问宿主机 `127.0.0.1:8080`；证书保存在独立数据卷中，容器更新不会丢失。
+5. 校验并验证：
+
+   ```bash
+   docker exec eatwhat-caddy caddy validate --config /etc/caddy/Caddyfile
+   docker ps --filter name=eatwhat-caddy
+   docker logs --tail=50 eatwhat-caddy
    curl -I http://fitfit.cn
    curl -I https://fitfit.cn
    curl -I https://www.fitfit.cn
@@ -405,7 +397,7 @@ docker compose up -d app
 
 ## CI/CD 自动部署（GitHub Actions）
 
-推送 `master` 后由 GitHub Actions 通过 SSH 登录服务器，只重新构建和更新 app。宿主机 Caddy
+推送 `master` 后由 GitHub Actions 通过 SSH 登录服务器，只重新构建和更新 app。独立 Caddy 容器
 和 MySQL 编排都不会参与 app 的构建；数据库使用独立 Compose 和命名卷。
 
 ### 工作流位置
@@ -448,7 +440,7 @@ docker compose up -d --build app
 推送后到仓库 **Actions** 页看运行日志；或直接：
 ```bash
 ssh root@146.56.250.103 \
-  'cd /root/code/EatWhatService && docker compose -f docker-compose.mysql.yml ps && docker compose ps && docker compose logs --tail=20 app && systemctl is-active caddy'
+  'cd /root/code/EatWhatService && docker compose -f docker-compose.mysql.yml ps && docker compose ps && docker compose logs --tail=20 app && docker ps --filter name=eatwhat-caddy'
 ```
 
 ## License
