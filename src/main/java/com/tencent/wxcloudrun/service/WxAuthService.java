@@ -32,7 +32,8 @@ public class WxAuthService {
   private final RestTemplate restTemplate;
   private final ObjectMapper objectMapper;
 
-  public WxAuthService(@Autowired ObjectMapper objectMapper) {
+  @Autowired
+  public WxAuthService(ObjectMapper objectMapper) {
     this(objectMapper, new RestTemplate());
   }
 
