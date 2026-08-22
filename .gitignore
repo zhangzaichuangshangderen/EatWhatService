@@ -17,4 +17,7 @@ target/
 .env.*
 !.env.example
 
+# ===== CapRover 部署密钥配置（禁止提交） =====
+eatwhat-boot-service.env
+eatwhat-java.env
 
